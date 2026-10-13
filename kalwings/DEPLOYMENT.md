@@ -67,6 +67,7 @@ hPanel → **Websites → Add website → Node.js Apps** → **Import Git reposi
 | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` (set **before** the build — it's baked in) |
 | `EMAIL_API_KEY`, `EMAIL_FROM` | Resend key; a sender on your verified domain |
 | `ADMIN_EMAILS` | your email — you become platform admin when you first sign in |
+| `CONTACT_TO` | (optional) inbox for contact-form emails; defaults to `EMAIL_FROM` |
 
 Connect your domain and enable SSL, then deploy. Builds need roughly 2 GB RAM.
 

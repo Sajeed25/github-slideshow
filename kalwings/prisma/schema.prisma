@@ -320,3 +320,13 @@ model Shortlist {
 
   @@unique([companyId, studentId])
 }
+
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  topic     String
+  message   String    @db.Text
+  createdAt DateTime  @default(now())
+  handledAt DateTime?
+}

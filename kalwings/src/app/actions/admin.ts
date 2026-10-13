@@ -41,3 +41,10 @@ export async function resolveReport(id: string) {
   await audit(a.id, "report.resolved", id);
   revalidatePath("/dashboard", "layout");
 }
+
+export async function markContactHandled(id: string) {
+  const a = await requireActionRole("PLATFORM_ADMIN");
+  await db.contactMessage.update({ where: { id }, data: { handledAt: new Date() } });
+  await audit(a.id, "contact.handled", id);
+  revalidatePath("/dashboard", "layout");
+}

@@ -28,7 +28,8 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 - **File uploads are not built.** Projects take links only; certificates/screenshots need signed-URL storage with type/size limits.
 - **College admin** can sign up but has an empty dashboard.
 - **Rate limiting is in-memory** (`src/lib/rate-limit.ts`): fine for one instance; use Redis/Upstash for several. OTP issuance is also limited per identifier in the database.
-- No analytics/error-monitoring SDK (Sentry etc.), no PWA service worker, no OG images, Contact form still `mailto:`.
+- No analytics/error-monitoring SDK (Sentry etc.) yet.
+- Done and tested in production mode: Contact form (stored in DB, honeypot + rate limit, admin inbox, optional email), Open Graph/Twitter image, installable PWA (manifest, PNG icons, safe service worker with offline page — private pages are never cached), Content Security Policy + HSTS.
 - Mentor "book a session" is a request/accept flow; slots are informational and not auto-bound to bookings. No calendar invites.
 - Security notes: Next.js server actions enforce same-origin; the Google routes use a state cookie. Add a CSP and review before launch.
 
@@ -49,7 +50,7 @@ Sample logins (dev only; OTP appears on screen): `admin@sample.kalwings.test`, `
 
 Create a real admin: put your email in `ADMIN_EMAILS` and sign in, or sign in once and run `npm run make-admin -- you@example.com`.
 
-Tests: with the dev server running and the seed loaded, `npm run test:e2e` drives student/mentor/employer/admin through the real UI (25 checks incl. permission and trust-rule checks). Set `E2E_BASE_URL` and `CHROMIUM_PATH` if needed.
+Tests: `npm run test:e2e:prod` smoke-tests a production build (CSP, PWA/offline, OG, contact form; see the header of `e2e/production.mjs`). With the dev server running and the seed loaded, `npm run test:e2e` drives student/mentor/employer/admin through the real UI (25 checks incl. permission and trust-rule checks). Set `E2E_BASE_URL` and `CHROMIUM_PATH` if needed.
 
 Node 20+.
 
@@ -86,7 +87,7 @@ Pay, work mode, location and eligibility always shown · unpaid roles labelled �
 
 ## Next steps
 
-1. Email/SMS provider for OTP and notifications; verify Google sign-in.
-2. Secure uploads, Sentry + analytics, CSP, PWA service worker, OG images.
+1. SMS provider for mobile sign-in; verify Google sign-in against real credentials.
+2. Secure uploads, Sentry + analytics.
 3. College dashboard; mentor slot booking; Redis rate limiting.
 4. Real legal copy, real content, `next/image` once photos exist; Lighthouse on real content.

@@ -52,3 +52,11 @@ export const messageSchema = z.object({ applicationId: z.string().cuid(), body: 
 export const reportSchema = z.object({ targetType: z.enum(["OPPORTUNITY", "MENTOR", "STUDENT", "COMPANY"]), targetId: z.string().cuid(), reason: text(500).min(10) });
 
 export const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 15);
+
+export const contactSchema = z.object({
+  name: text(80).min(2),
+  email: z.string().trim().email().max(254),
+  topic: z.enum(["Student", "Employer", "College", "Mentor", "Press"]),
+  message: text(2000).min(10),
+  website: z.string().max(0).optional(), // honeypot: bots fill it, humans never see it
+});
