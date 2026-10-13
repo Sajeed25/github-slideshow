@@ -12,7 +12,7 @@ import { requestSession } from "@/app/actions/student";
 import { fmtTime } from "@/components/dash/ui";
 
 export const dynamic = "force-dynamic";
-const load = (slug: string) => db.mentorProfile.findFirst({ where: { slug, status: "VERIFIED" }, include: { user: true, slots: { where: { startsAt: { gt: new Date() } }, orderBy: { startsAt: "asc" }, take: 5 } } });
+const load = (slug: string) => db.mentorProfile.findFirst({ where: { slug, status: "VERIFIED" }, include: { user: true, slots: { where: { startsAt: { gt: new Date() }, sessionId: null }, orderBy: { startsAt: "asc" }, take: 10 } } });
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const m = await load((await params).slug);
@@ -35,13 +35,17 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           <ul className="mt-4 flex flex-wrap items-center gap-2">{asList(m.tags).map((t) => <li key={t}><Badge tone="teal">{t}</Badge></li>)}{m.isSample && <li><SampleTag /></li>}</ul>
           {m.bio && <p className="mt-6 text-ink-soft">{m.bio}</p>}
           <h2 className="mt-8 text-xl">Upcoming office hours</h2>
-          {m.slots.length ? <ul className="mt-2 text-sm text-ink-soft">{m.slots.map((s) => <li key={s.id}>{fmtTime(s.startsAt)} IST</li>)}</ul> : <p className="mt-2 text-sm text-ink-soft">No slots published yet — you can still send a request.</p>}
+          {m.slots.length ? <ul className="mt-2 text-sm text-ink-soft">{m.slots.map((s) => <li key={s.id}>{fmtTime(s.startsAt)} IST</li>)}</ul> : <p className="mt-2 text-sm text-ink-soft">No open slots right now — you can still send a request and the mentor will suggest a time.</p>}
           <div className="mt-8">
             {!user ? <Button asChild size="lg"><Link href="/login">Log in to request a session</Link></Button>
               : user.role !== "STUDENT" ? <Badge>Only students can request sessions</Badge>
               : (<div className="card max-w-lg p-6"><h2 className="mb-3 text-xl">Request a session</h2>
                   <ActionForm action={requestSession} reset submit="Send request" success="Request sent — track it in your dashboard.">
                     <input type="hidden" name="mentorId" value={m.id} />
+                    <fieldset className="space-y-2"><legend className="text-sm font-semibold">Pick a time (IST)</legend>
+                      {m.slots.map((s) => <label key={s.id} className="flex items-center gap-2 text-sm"><input type="radio" name="slotId" value={s.id} className="accent-teal-600" />{fmtTime(s.startsAt)}</label>)}
+                      <label className="flex items-center gap-2 text-sm"><input type="radio" name="slotId" value="" defaultChecked className="accent-teal-600" />No specific time</label>
+                    </fieldset>
                     <Field label="Topic" name="topic" required minLength={3} maxLength={120} /><Area label="Anything the mentor should know?" name="message" maxLength={500} />
                   </ActionForm></div>)}
           </div>

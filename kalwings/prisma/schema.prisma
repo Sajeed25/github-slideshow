@@ -72,30 +72,31 @@ model User {
 }
 
 model StudentProfile {
-  isSample       Boolean            @default(false) // seeded placeholder; UI shows a "Sample" tag
-  id             String             @id @default(cuid())
-  userId         String             @unique
-  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slug           String             @unique // public Talent Card URL
-  headline       String?
-  bio            String?            @db.Text
-  city           String?
-  githubUrl      String?            @db.VarChar(400)
-  skillsClaimed  Json?
-  lookingFor     String?            @db.Text
-  graduationYear Int?
-  collegeId      String?
-  college        College?           @relation(fields: [collegeId], references: [id])
+  shareWithCollege Boolean            @default(false) // consent: name + progress visible to their college admins
+  isSample         Boolean            @default(false) // seeded placeholder; UI shows a "Sample" tag
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug             String             @unique // public Talent Card URL
+  headline         String?
+  bio              String?            @db.Text
+  city             String?
+  githubUrl        String?            @db.VarChar(400)
+  skillsClaimed    Json?
+  lookingFor       String?            @db.Text
+  graduationYear   Int?
+  collegeId        String?
+  college          College?           @relation(fields: [collegeId], references: [id])
   // Contact details live on User and are NEVER returned by public queries.
-  contactVisible Boolean            @default(false)
-  completeness   Int                @default(0) // 0–100 profile completeness score
-  projects       Project[]
-  skills         SkillEvidence[]
-  applications   Application[]
-  savedRoles     SavedOpportunity[]
-  sessions       MentorSession[]
-  endorsements   Endorsement[]
-  shortlistedBy  Shortlist[]
+  contactVisible   Boolean            @default(false)
+  completeness     Int                @default(0) // 0–100 profile completeness score
+  projects         Project[]
+  skills           SkillEvidence[]
+  applications     Application[]
+  savedRoles       SavedOpportunity[]
+  sessions         MentorSession[]
+  endorsements     Endorsement[]
+  shortlistedBy    Shortlist[]
 }
 
 model Project {
@@ -140,23 +141,26 @@ model MentorProfile {
 }
 
 model OfficeHourSlot {
-  id       String        @id @default(cuid())
-  mentorId String
-  mentor   MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
-  startsAt DateTime
-  endsAt   DateTime
+  sessionId String?        @unique // set while a request holds/books this slot
+  session   MentorSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  id        String         @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile  @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime
 }
 
 model MentorSession {
-  id        String         @id @default(cuid())
+  slot      OfficeHourSlot?
+  id        String          @id @default(cuid())
   mentorId  String
-  mentor    MentorProfile  @relation(fields: [mentorId], references: [id])
+  mentor    MentorProfile   @relation(fields: [mentorId], references: [id])
   studentId String
-  student   StudentProfile @relation(fields: [studentId], references: [id])
+  student   StudentProfile  @relation(fields: [studentId], references: [id])
   topic     String
-  message   String?        @db.Text
-  createdAt DateTime       @default(now())
-  status    SessionStatus  @default(REQUESTED)
+  message   String?         @db.Text
+  createdAt DateTime        @default(now())
+  status    SessionStatus   @default(REQUESTED)
   startsAt  DateTime?
 }
 
@@ -242,11 +246,13 @@ model SavedOpportunity {
 }
 
 model College {
-  id       String           @id @default(cuid())
-  name     String
-  city     String?
-  students StudentProfile[]
-  admins   CollegeAdmin[]
+  status    VerificationStatus @default(PENDING) // students can pick it only once VERIFIED
+  createdAt DateTime           @default(now())
+  id        String             @id @default(cuid())
+  name      String
+  city      String?
+  students  StudentProfile[]
+  admins    CollegeAdmin[]
 }
 
 model CollegeAdmin {

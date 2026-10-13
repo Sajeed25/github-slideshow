@@ -13,7 +13,7 @@ const links: Record<Role, [string, string][]> = {
   STUDENT: [["Overview", "/dashboard"], ["Profile", "/dashboard/profile"], ["Portfolio", "/dashboard/portfolio"], ["Applications", "/dashboard/applications"], ["Saved roles", "/dashboard/saved"], ["Mentor sessions", "/dashboard/mentoring"]],
   MENTOR: [["Overview", "/dashboard"], ["Mentor profile", "/dashboard/mentoring"]],
   EMPLOYER: [["Overview", "/dashboard"], ["Company", "/dashboard/company"], ["Roles & challenges", "/dashboard/roles"], ["Talent search", "/dashboard/talent"], ["Pipeline", "/dashboard/pipeline"]],
-  COLLEGE_ADMIN: [["Overview", "/dashboard"]],
+  COLLEGE_ADMIN: [["Overview", "/dashboard"], ["College", "/dashboard/college"]],
   PLATFORM_ADMIN: [["Overview & queues", "/dashboard"], ["Listing moderation", "/dashboard/moderation"], ["Reports", "/dashboard/reports"], ["Contact inbox", "/dashboard/inbox"], ["Audit log", "/dashboard/audit"]],
 };
 

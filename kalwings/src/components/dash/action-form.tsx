@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useEffect, useRef } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { Result } from "@/app/actions/_shared";
 
@@ -13,7 +13,9 @@ export function ActionForm({ action, children, submit = "Save", success = "Saved
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state.ok && reset) ref.current?.reset(); }, [state, reset]);
   return (
-    <form ref={ref} action={run} className={className ?? "space-y-4"}>
+    // We submit manually instead of `action={run}`: React 19 auto-resets uncontrolled forms after an action,
+    // which snapped selects/checkboxes back to stale defaults and lost the user's input on errors.
+    <form ref={ref} onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => run(fd)); }} className={className ?? "space-y-4"}>
       {children}
       <div className="flex items-center gap-3">
         <Button disabled={pending}>{pending ? "Saving…" : submit}</Button>

@@ -20,7 +20,7 @@ export const profileSchema = z.object({
 
 export const projectSchema = z.object({ title: text(100).min(3), summary: text(800).min(10), githubUrl: optUrl, demoUrl: optUrl });
 
-export const sessionRequestSchema = z.object({ mentorId: z.string().cuid(), topic: text(120).min(3), message: text(500).optional().default("") });
+export const sessionRequestSchema = z.object({ mentorId: z.string().cuid(), slotId: z.string().cuid().optional().or(z.literal("")), topic: text(120).min(3), message: text(500).optional().default("") });
 
 export const mentorProfileSchema = z.object({ roleTitle: text(80).min(2), company: text(80).min(2), country: text(60).min(2), domain: text(40).min(2), tags: text(200).optional().default(""), bio: text(600).optional().default("") });
 
@@ -60,3 +60,6 @@ export const contactSchema = z.object({
   message: text(2000).min(10),
   website: z.string().max(0).optional(), // honeypot: bots fill it, humans never see it
 });
+
+export const collegeSchema = z.object({ name: text(120).min(3), city: text(60).min(2) });
+export const studentCollegeSchema = z.object({ collegeId: z.string().cuid().optional().or(z.literal("")), share: z.string().optional() });

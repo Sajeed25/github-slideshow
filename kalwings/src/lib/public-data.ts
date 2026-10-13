@@ -26,6 +26,6 @@ export async function publicOpportunities() {
 }
 
 export async function publicMentors() {
-  const rows = await db.mentorProfile.findMany({ where: { status: "VERIFIED" }, include: { user: true, slots: { where: { startsAt: { gt: new Date() } }, take: 1 }, sessions: { where: { status: "COMPLETED" }, select: { studentId: true } } } });
+  const rows = await db.mentorProfile.findMany({ where: { status: "VERIFIED" }, include: { user: true, slots: { where: { startsAt: { gt: new Date() }, sessionId: null }, take: 1 }, sessions: { where: { status: "COMPLETED" }, select: { studentId: true } } } });
   return rows.map((m) => ({ ...toCardMentor(m, new Set(m.sessions.map((s) => s.studentId)).size), available: m.slots.length > 0 }));
 }

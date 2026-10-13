@@ -35,7 +35,8 @@ export async function addSlot(_: Result, fd: FormData): Promise<Result> {
 
 export async function deleteSlot(id: string) {
   const { m } = await myMentor();
-  await db.officeHourSlot.deleteMany({ where: { id, mentorId: m.id } });
+  const r = await db.officeHourSlot.deleteMany({ where: { id, mentorId: m.id, sessionId: null } }); // booked slots can't be removed
+  if (r.count === 0) throw new Error("This slot is booked. Decline or complete the session first.");
   revalidatePath("/dashboard", "layout");
 }
 
@@ -46,6 +47,7 @@ export async function respondToSession(id: string, to: "ACCEPTED" | "DECLINED" |
   const allowed: Record<string, string[]> = { REQUESTED: ["ACCEPTED", "DECLINED"], ACCEPTED: ["COMPLETED"] };
   if (!allowed[s.status]?.includes(to)) throw new Error("Invalid transition");
   await db.mentorSession.update({ where: { id }, data: { status: to } });
+  if (to === "DECLINED") await db.officeHourSlot.updateMany({ where: { sessionId: id }, data: { sessionId: null } }); // free the slot again
   await notify(s.student.userId, `Session ${to.toLowerCase()}`, `${u.name} ${to.toLowerCase()} your request: ${s.topic}`);
   revalidatePath("/dashboard", "layout");
 }

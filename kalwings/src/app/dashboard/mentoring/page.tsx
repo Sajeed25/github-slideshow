@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requirePageRole } from "@/lib/session";
 import { ActionButton, ActionForm, Area, Field } from "@/components/dash/action-form";
 import { Empty, PageTitle, Panel, Status, fmt, fmtTime } from "@/components/dash/ui";
+import { cancelSession } from "@/app/actions/student";
 import { addSlot, deleteSlot, giveEndorsement, respondToSession, saveMentorProfile } from "@/app/actions/mentor";
 
 export default async function Page() {
@@ -17,7 +18,7 @@ async function StudentView({ userId }: { userId: string }) {
     <>
       <PageTitle title="Mentor sessions" sub="Request a session from a verified mentor." />
       <Panel action={<Link className="text-sm font-semibold underline" href="/mentors">Find a mentor</Link>}>
-        {p.sessions.length ? <ul className="divide-y divide-line">{p.sessions.map((s) => <li key={s.id} className="flex items-center justify-between py-3"><div><p className="font-semibold">{s.topic}</p><p className="text-sm text-ink-soft">{s.mentor.user.name} · requested {fmt(s.createdAt)}</p></div><Status s={s.status} /></li>)}</ul> : <Empty>No requests yet.</Empty>}
+        {p.sessions.length ? <ul className="divide-y divide-line">{p.sessions.map((s) => <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="font-semibold">{s.topic}</p><p className="text-sm text-ink-soft">{s.mentor.user.name} · {s.startsAt ? `${fmtTime(s.startsAt)} IST` : `requested ${fmt(s.createdAt)}`}</p></div><div className="flex items-center gap-2"><Status s={s.status} />{(s.status === "ACCEPTED" || s.status === "COMPLETED") && s.startsAt && <a className="text-sm font-semibold underline" href={`/api/sessions/${s.id}/ics`}>Add to calendar</a>}{(s.status === "REQUESTED" || s.status === "ACCEPTED") && <ActionButton variant="ghost" confirm="Cancel this session?" action={cancelSession.bind(null, s.id)}>Cancel</ActionButton>}</div></li>)}</ul> : <Empty>No requests yet.</Empty>}
       </Panel>
     </>
   );
@@ -41,7 +42,7 @@ async function MentorView({ userId }: { userId: string }) {
         </Panel>
         {m && (
           <Panel title="Office-hour slots">
-            {m.slots.length ? <ul className="mb-4 divide-y divide-line">{m.slots.map((s) => <li key={s.id} className="flex items-center justify-between py-2 text-sm">{fmtTime(s.startsAt)} – {s.endsAt.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}<ActionButton variant="ghost" action={deleteSlot.bind(null, s.id)}>Remove</ActionButton></li>)}</ul> : <Empty>No upcoming slots.</Empty>}
+            {m.slots.length ? <ul className="mb-4 divide-y divide-line">{m.slots.map((s) => <li key={s.id} className="flex items-center justify-between py-2 text-sm"><span>{fmtTime(s.startsAt)} – {s.endsAt.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}</span>{s.sessionId ? <Status s="BOOKED" /> : <ActionButton variant="ghost" action={deleteSlot.bind(null, s.id)}>Remove</ActionButton>}</li>)}</ul> : <Empty>No upcoming slots.</Empty>}
             <ActionForm action={addSlot} reset submit="Add slot" success="Slot added"><div className="grid gap-4 sm:grid-cols-2"><Field label="Starts (IST)" name="startsAt" type="datetime-local" required /><Field label="Minutes" name="minutes" type="number" min={15} max={120} step={15} defaultValue={30} required /></div></ActionForm>
           </Panel>
         )}
@@ -50,8 +51,8 @@ async function MentorView({ userId }: { userId: string }) {
         <>
           <Panel title="Session requests" className="mt-6">
             {m.sessions.length ? <ul className="divide-y divide-line">{m.sessions.map((s) => (
-              <li key={s.id} className="py-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-semibold">{s.topic}</p><p className="text-sm text-ink-soft">{s.student.user.name}{s.message && ` — “${s.message}”`}</p></div><Status s={s.status} /></div>
-                <div className="mt-2 flex gap-2">{s.status === "REQUESTED" && <><ActionButton variant="primary" action={respondToSession.bind(null, s.id, "ACCEPTED")}>Accept</ActionButton><ActionButton action={respondToSession.bind(null, s.id, "DECLINED")}>Decline</ActionButton></>}{s.status === "ACCEPTED" && <ActionButton action={respondToSession.bind(null, s.id, "COMPLETED")}>Mark completed</ActionButton>}</div></li>))}</ul> : <Empty>No requests yet.</Empty>}
+              <li key={s.id} className="py-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-semibold">{s.topic}</p><p className="text-sm text-ink-soft">{s.student.user.name}{s.startsAt && ` · ${fmtTime(s.startsAt)} IST`}{s.message && ` — “${s.message}”`}</p></div><Status s={s.status} /></div>
+                <div className="mt-2 flex gap-2">{s.status === "REQUESTED" && <><ActionButton variant="primary" action={respondToSession.bind(null, s.id, "ACCEPTED")}>Accept</ActionButton><ActionButton action={respondToSession.bind(null, s.id, "DECLINED")}>Decline</ActionButton></>}{s.status === "ACCEPTED" && <><ActionButton action={respondToSession.bind(null, s.id, "COMPLETED")}>Mark completed</ActionButton>{s.startsAt && <a className="self-center text-sm font-semibold underline" href={`/api/sessions/${s.id}/ics`}>Add to calendar</a>}</>}</div></li>))}</ul> : <Empty>No requests yet.</Empty>}
           </Panel>
           <Panel title="Give an endorsement" className="mt-6">
             <p className="mb-4 text-sm text-ink-soft">Endorsements are only for students you&apos;ve completed a session with, and must link to the work you&apos;re vouching for. They appear as verified evidence on the student&apos;s Talent Card.</p>

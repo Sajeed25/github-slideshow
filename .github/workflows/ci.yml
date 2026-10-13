@@ -11,19 +11,28 @@ concurrency:
 
 jobs:
   verify:
+    name: verify (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: mysql-8, image: "mysql:8.0", drift: true }
+          - { name: mariadb-10.11, image: "mariadb:10.11", drift: false }
     defaults:
       run:
         working-directory: kalwings
     services:
       mysql:
-        image: mariadb:10.11   # Hostinger runs MariaDB/MySQL
+        image: ${{ matrix.image }}   # Hostinger runs MySQL or MariaDB; test both
         env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: kalwings
           MARIADB_ROOT_PASSWORD: root
           MARIADB_DATABASE: kalwings
         ports: ["3306:3306"]
         options: >-
-          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 20
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent" --health-interval 5s --health-timeout 5s --health-retries 30
     env:
       DATABASE_URL: mysql://root:root@127.0.0.1:3306/kalwings
       AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789abcdef
@@ -41,7 +50,9 @@ jobs:
         run: |
           npx prisma validate
           npx prisma migrate deploy
+      # MariaDB reports JSON columns as longtext, so this drift check is only meaningful on real MySQL.
       - name: Schema and migrations are in sync (fails if someone edited schema.prisma without a migration)
+        if: ${{ matrix.drift }}
         run: |
           mysql -h127.0.0.1 -uroot -proot -e "CREATE DATABASE kalwings_shadow"
           npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "mysql://root:root@127.0.0.1:3306/kalwings_shadow" --exit-code

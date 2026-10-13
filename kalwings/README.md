@@ -16,9 +16,10 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 
 - **Auth:** email/mobile one-time codes (hashed, 10-min expiry, 5 attempts, rate-limited), signed httpOnly session cookie, roles `STUDENT / MENTOR / EMPLOYER / COLLEGE_ADMIN / PLATFORM_ADMIN`. Every server action calls `requireActionRole(...)`; every dashboard page calls `requirePageRole(...)`.
 - **Student:** onboarding wizard, profile completeness score (visible checklist), portfolio (projects), public Talent Card at `/t/[slug]` with QR code (noindex, never shows email/phone), one-click apply, application tracker + withdraw, saved roles, mentor session requests, notifications, opt-in contact sharing.
-- **Mentor:** profile (admin-verified before listing), office-hour slots, accept/decline/complete requests, endorsements (only for students with a *completed* session, and must link evidence — each becomes verified evidence on the Talent Card with an explanation on hover).
+- **Mentor:** profile (admin-verified before listing), office-hour slots that students book (atomic: a slot can't be double-booked; freed on decline/cancel), calendar `.ics` invite for accepted sessions, accept/decline/complete requests, endorsements (only for students with a *completed* session, and must link evidence — each becomes verified evidence on the Talent Card with an explanation on hover).
 - **Employer:** company registration → admin verification gate (no posting/search before it), post roles/challenges (pay, work mode, location, eligibility mandatory; paid roles must state an amount; unpaid labelled), listings go live only after moderation, talent search (verified vs self-declared skills shown separately), shortlist, pipeline Applied → Shortlisted → Interview → Offer, private notes, per-application messaging.
-- **Admin:** company and mentor verification queues, listing moderation, fraud/abuse reports, analytics counts, audit log.
+- **College admin:** registers a college (admin-verified), then sees aggregate cohort stats and a roster of **only the students who opted in** (name, headline, progress — never contact details). Students pick a verified college and tick a consent box in Profile.
+- **Admin:** company, mentor and college verification queues, listing moderation, fraud/abuse reports, analytics counts, audit log.
 - Public `/opportunities` and `/mentors` read from the database (verified + moderated only). The homepage still uses `src/data/sample.ts` as a showcase.
 
 ### Platform: what is NOT done
@@ -26,11 +27,10 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 - **Email sign-in codes work via Resend** (`EMAIL_API_KEY`, `EMAIL_FROM`; tested against a mock server, not live Resend). **Mobile/SMS sign-in is not available in production** (no SMS provider). In dev the code is shown on screen. Notifications are in-app only. First admin: set `ADMIN_EMAILS`.
 - **Google sign-in is implemented but untested** (needs real `GOOGLE_CLIENT_ID/SECRET` and the callback URL `/api/auth/google/callback`).
 - **File uploads are not built.** Projects take links only; certificates/screenshots need signed-URL storage with type/size limits.
-- **College admin** can sign up but has an empty dashboard.
 - **Rate limiting is in-memory** (`src/lib/rate-limit.ts`): fine for one instance; use Redis/Upstash for several. OTP issuance is also limited per identifier in the database.
 - No analytics/error-monitoring SDK (Sentry etc.) yet.
 - Done and tested in production mode: Contact form (stored in DB, honeypot + rate limit, admin inbox, optional email), Open Graph/Twitter image, installable PWA (manifest, PNG icons, safe service worker with offline page — private pages are never cached), Content Security Policy + HSTS.
-- Mentor "book a session" is a request/accept flow; slots are informational and not auto-bound to bookings. No calendar invites.
+- Mentor sessions don't include video links; mentor and student agree the link in messages/email.
 - Security notes: Next.js server actions enforce same-origin; the Google routes use a state cookie. Add a CSP and review before launch.
 
 ## Setup
@@ -46,11 +46,11 @@ npm run db:seed                  # SAMPLE mentors, companies, listings, admin + 
 npm run dev                      # http://localhost:3000
 ```
 
-Sample logins (dev only; OTP appears on screen): `admin@sample.kalwings.test`, `student@sample.kalwings.test`, `sample-mentor-1@sample.kalwings.test`, `sample-co-a@sample.kalwings.test`. These addresses can't receive mail, so they are inert in production, but run `npm run db:unseed` before launch anyway.
+Sample logins (dev only; OTP appears on screen): `admin@sample.kalwings.test`, `college@sample.kalwings.test`, `student@sample.kalwings.test`, `sample-mentor-1@sample.kalwings.test`, `sample-co-a@sample.kalwings.test`. These addresses can't receive mail, so they are inert in production, but run `npm run db:unseed` before launch anyway.
 
 Create a real admin: put your email in `ADMIN_EMAILS` and sign in, or sign in once and run `npm run make-admin -- you@example.com`.
 
-Tests: `npm run test:e2e:prod` smoke-tests a production build (CSP, PWA/offline, OG, contact form; see the header of `e2e/production.mjs`). With the dev server running and the seed loaded, `npm run test:e2e` drives student/mentor/employer/admin through the real UI (25 checks incl. permission and trust-rule checks). Set `E2E_BASE_URL` and `CHROMIUM_PATH` if needed.
+Tests: `npm run test:e2e:prod` smoke-tests a production build (CSP, PWA/offline, OG, contact form; see the header of `e2e/production.mjs`). With the dev server running and the seed loaded, `npm run test:e2e` drives student/mentor/employer/admin through the real UI (~40 checks incl. permission, trust-rule, slot-booking and college-consent checks). Set `E2E_BASE_URL` and `CHROMIUM_PATH` if needed.
 
 Node 20+.
 
@@ -89,5 +89,5 @@ Pay, work mode, location and eligibility always shown · unpaid roles labelled �
 
 1. SMS provider for mobile sign-in; verify Google sign-in against real credentials.
 2. Secure uploads, Sentry + analytics.
-3. College dashboard; mentor slot booking; Redis rate limiting.
+3. Redis/DB-backed rate limiting if you run more than one instance.
 4. Real legal copy, real content, `next/image` once photos exist; Lighthouse on real content.

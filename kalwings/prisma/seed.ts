@@ -14,6 +14,7 @@ async function unseed() {
   await db.opportunity.deleteMany({ where: { company: { isSample: true } } });
   await db.company.deleteMany({ where: { isSample: true } });
   await db.user.deleteMany({ where: { email: { endsWith: "@sample.kalwings.test" } } });
+  await db.college.deleteMany({ where: { name: { startsWith: "Sample " } } });
 }
 
 async function seed() {
@@ -52,13 +53,15 @@ async function seed() {
     });
   }
 
+  const college = await db.college.create({ data: { name: "Sample Institute of Technology", city: "Hyderabad", status: "VERIFIED" } });
+  await db.user.create({ data: { email: "college@sample.kalwings.test", name: "Sample College Admin", role: "COLLEGE_ADMIN", college: { create: { collegeId: college.id } } } });
   await db.user.create({
     data: {
       email: "student@sample.kalwings.test", name: "Sample Student", role: "STUDENT",
-      student: { create: { slug: "sample-student", isSample: true, headline: "ECE final-year · embedded & Python", bio: "[Sample] Replace me — a short story about what you like building.", city: "Hyderabad", graduationYear: 2026, skillsClaimed: ["Embedded C", "Python", "Circuit design"] } },
+      student: { create: { slug: "sample-student", isSample: true, collegeId: college.id, shareWithCollege: true, headline: "ECE final-year · embedded & Python", bio: "[Sample] Replace me — a short story about what you like building.", city: "Hyderabad", graduationYear: 2026, skillsClaimed: ["Embedded C", "Python", "Circuit design"] } },
     },
   });
-  console.log("Seeded sample data. Sample logins (dev OTP prints to the server console): admin@/student@/sample-mentor-1@/sample-co-a@ + sample.kalwings.test");
+  console.log("Seeded sample data. Sample logins (dev OTP prints to the server console): admin@/student@/college@/sample-mentor-1@/sample-co-a@ + sample.kalwings.test");
 }
 
 (process.argv[2] === "unseed" ? unseed() : seed()).finally(() => db.$disconnect());

@@ -16,6 +16,15 @@ export async function reviewCompany(id: string, d: Decision) {
   revalidatePath("/dashboard", "layout");
 }
 
+export async function reviewCollege(id: string, d: Decision) {
+  const a = await requireActionRole("PLATFORM_ADMIN");
+  if (!ok(d)) throw new Error("Invalid");
+  const c = await db.college.update({ where: { id }, data: { status: d }, include: { admins: true } });
+  await audit(a.id, `college.${d.toLowerCase()}`, `${c.name} (${id})`);
+  await Promise.all(c.admins.map((m) => notify(m.userId, `College ${d.toLowerCase()}`, c.name)));
+  revalidatePath("/dashboard", "layout");
+}
+
 export async function reviewMentor(id: string, d: Decision) {
   const a = await requireActionRole("PLATFORM_ADMIN");
   if (!ok(d)) throw new Error("Invalid");

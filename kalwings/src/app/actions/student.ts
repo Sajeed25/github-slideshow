@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireActionRole } from "@/lib/session";
-import { profileSchema, projectSchema, sessionRequestSchema, csv } from "@/lib/validation";
+import { profileSchema, projectSchema, sessionRequestSchema, studentCollegeSchema, csv } from "@/lib/validation";
 import { completeness } from "@/lib/completeness";
 import { notify } from "@/lib/audit";
 import { fail, obj, type Result } from "./_shared";
@@ -52,6 +52,18 @@ export async function deleteProject(id: string) {
   revalidatePath("/dashboard", "layout");
 }
 
+export async function saveCollege(_: Result, fd: FormData): Promise<Result> {
+  const { p } = await me();
+  const r = studentCollegeSchema.safeParse(obj(fd));
+  if (!r.success) return fail(r.error);
+  const collegeId = r.data.collegeId || null;
+  if (collegeId && !(await db.college.findFirst({ where: { id: collegeId, status: "VERIFIED" } }))) return { error: "Choose a college from the list." };
+  // Consent is only meaningful with a college, and is off unless ticked.
+  await db.studentProfile.update({ where: { id: p.id }, data: { collegeId, shareWithCollege: !!collegeId && r.data.share === "on" } });
+  revalidatePath("/dashboard", "layout");
+  return { ok: true };
+}
+
 export async function toggleContactVisible() {
   const { p } = await me();
   await db.studentProfile.update({ where: { id: p.id }, data: { contactVisible: !p.contactVisible } });
@@ -94,10 +106,37 @@ export async function requestSession(_: Result, fd: FormData): Promise<Result> {
   if (!m || m.status !== "VERIFIED") return { error: "This mentor isn't available." };
   const open = await db.mentorSession.count({ where: { studentId: p.id, mentorId: m.id, status: { in: ["REQUESTED", "ACCEPTED"] } } });
   if (open >= 1) return { error: "You already have an open request with this mentor." };
-  await db.mentorSession.create({ data: { mentorId: m.id, studentId: p.id, topic: r.data.topic, message: r.data.message || null } });
+  const slotId = r.data.slotId || undefined;
+  try {
+    // Create the request and claim the slot atomically so two students can never hold the same slot.
+    await db.$transaction(async (tx) => {
+      const s = await tx.mentorSession.create({ data: { mentorId: m.id, studentId: p.id, topic: r.data.topic, message: r.data.message || null } });
+      if (!slotId) return;
+      const slot = await tx.officeHourSlot.findFirst({ where: { id: slotId, mentorId: m.id, sessionId: null, startsAt: { gt: new Date() } } });
+      if (!slot) throw new Error("SLOT_TAKEN");
+      const claimed = await tx.officeHourSlot.updateMany({ where: { id: slotId, sessionId: null }, data: { sessionId: s.id } });
+      if (claimed.count !== 1) throw new Error("SLOT_TAKEN");
+      await tx.mentorSession.update({ where: { id: s.id }, data: { startsAt: slot.startsAt } });
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "SLOT_TAKEN") return { error: "That time was just taken. Please pick another slot." };
+    throw e;
+  }
   await notify(m.userId, "New session request", `${u.name}: ${r.data.topic}`);
   revalidatePath("/dashboard", "layout");
   return { ok: true };
+}
+
+export async function cancelSession(id: string) {
+  const { u, p } = await me();
+  const s = await db.mentorSession.findFirst({ where: { id, studentId: p.id, status: { in: ["REQUESTED", "ACCEPTED"] } }, include: { mentor: true } });
+  if (!s) throw new Error("Not found");
+  await db.$transaction([
+    db.mentorSession.update({ where: { id }, data: { status: "CANCELLED" } }),
+    db.officeHourSlot.updateMany({ where: { sessionId: id }, data: { sessionId: null } }), // free the slot
+  ]);
+  await notify(s.mentor.userId, "Session cancelled", `${u.name} cancelled: ${s.topic}`);
+  revalidatePath("/dashboard", "layout");
 }
 
 export async function markNotificationsRead() {

@@ -120,6 +120,43 @@ ok(card.includes('Embedded C') && card.includes('Clean firmware'), 'Talent Card 
 ok(!card.includes(`stu${tag}@example.com`), 'Talent Card does not leak email');
 ok(await student.locator('svg[viewBox]').count() > 0 && card.includes('QR code'), 'Talent Card has QR');
 
+// --- slot booking: no double-booking, release on decline, calendar file
+await mentor.goto(`${B}/dashboard/mentoring`);
+const when = (h) => { const d = new Date(Date.now() + h * 3600e3); d.setMinutes(0, 0, 0); const z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:00`; };
+await mentor.fill('input[name=startsAt]', when(48)); await mentor.click('button:has-text("Add slot")'); await mentor.waitForSelector('text=Slot added');
+const student2 = await user(); await auth(student2, 'join', `stu2${tag}@example.com`, { name: `Second Student ${tag}`, role: 'STUDENT' });
+await student.goto(`${B}/mentors`); await student.locator('article', { hasText: `Test Mentor ${tag}` }).locator('a').first().click();
+// first student already has an ACCEPTED/COMPLETED session -> allowed a new request only if none open
+await student.fill('input[name=topic]', 'Mock interview'); await student.locator('input[name=slotId]:not([value=""])').first().check(); await student.click('button:has-text("Send request")'); await student.waitForSelector('text=Request sent');
+await student2.goto(`${B}/mentors`); await student2.locator('article', { hasText: `Test Mentor ${tag}` }).locator('a').first().click();
+ok(await student2.locator('input[name=slotId]:not([value=""])').count() === 0, 'booked slot no longer offered to others');
+await mentor.goto(`${B}/dashboard/mentoring`); ok(await mentor.locator('li', { hasText: /booked/i }).count() > 0, 'mentor sees slot as booked');
+await mentor.locator('li', { hasText: 'Mock interview' }).locator('button:has-text("Decline")').click(); await mentor.waitForTimeout(800);
+await student2.reload(); ok(await student2.locator('input[name=slotId]:not([value=""])').count() > 0, 'declined request frees the slot');
+await student2.fill('input[name=topic]', 'Career advice'); await student2.locator('input[name=slotId]:not([value=""])').first().check(); await student2.click('button:has-text("Send request")'); await student2.waitForSelector('text=Request sent');
+await mentor.goto(`${B}/dashboard/mentoring`); await mentor.locator('li', { hasText: 'Career advice' }).locator('button:has-text("Accept")').click(); await mentor.waitForTimeout(800);
+const ics = await student2.request.get(`${B}/api/sessions/${(await mentor.locator('a:has-text("Add to calendar")').first().getAttribute('href')).split('/')[3]}/ics`);
+ok(ics.status() === 200 && (await ics.text()).includes('BEGIN:VEVENT'), 'accepted session downloads an .ics invite');
+const anonIcs = await anon.request.get(`${B}/api/sessions/anything/ics`); ok(anonIcs.status() === 401, 'ics requires sign-in');
+await student2.goto(`${B}/dashboard/mentoring`); await student2.on('dialog', (d) => d.accept()); await student2.locator('li', { hasText: 'Career advice' }).locator('button:has-text("Cancel")').click(); await student2.waitForTimeout(800);
+await mentor.goto(`${B}/dashboard/mentoring`); ok(await mentor.locator('li', { hasText: /booked/i }).count() === 0, 'cancelling frees the slot');
+
+// --- college: register -> admin verifies -> student opts in -> dashboard
+const college = await user(); await auth(college, 'join', `col${tag}@example.com`, { name: 'College Admin', role: 'COLLEGE_ADMIN' });
+await college.goto(`${B}/dashboard/college`); await college.fill('input[name=name]', `Test Institute ${tag}`); await college.fill('input[name=city]', 'Hyderabad');
+await college.click('button:has-text("Submit for verification")'); await college.waitForSelector("text=We'll notify you");
+await student.goto(`${B}/dashboard/profile`); ok(await student.locator(`option:has-text("Test Institute ${tag}")`).count() === 0, 'unverified college not selectable');
+await admin.goto(`${B}/dashboard`); await admin.locator('li', { hasText: `Test Institute ${tag}` }).locator('button:has-text("Verify")').click(); await admin.waitForTimeout(800);
+await student.reload(); await student.selectOption('select[name=collegeId]', { label: `Test Institute ${tag} — Hyderabad` }); await student.click('button:has-text("Save college")'); await student.waitForSelector('text=Saved');
+await college.goto(`${B}/dashboard/college`); ok(await college.locator('text=Students joined').count() > 0, 'college dashboard shows stats once verified');
+ok(await college.locator(`text=Test Student ${tag}`).count() === 0, 'student who has not consented is not listed');
+await student.check('input[name=share]'); await student.click('button:has-text("Save college")'); await student.waitForTimeout(1200);
+await college.reload(); ok(await college.locator(`text=Test Student ${tag}`).count() > 0, 'consenting student appears in roster');
+ok(!(await college.content()).includes(`stu${tag}@example.com`), 'roster never shows student email');
+await student.uncheck('input[name=share]'); await student.click('button:has-text("Save college")'); await student.waitForTimeout(1200);
+await college.reload(); ok(await college.locator(`text=Test Student ${tag}`).count() === 0, 'withdrawing consent removes the student');
+await college.goto(`${B}/dashboard/moderation`); ok(!/moderation/.test(college.url()), 'college admin cannot open admin pages');
+
 // --- admin audit
 await admin.goto(`${B}/dashboard/audit`); ok(await admin.locator('text=company.verified').count() > 0, 'audit log records admin decisions');
 

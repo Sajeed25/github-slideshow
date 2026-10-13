@@ -4,7 +4,7 @@ import { requirePageRole } from "@/lib/session";
 import { completeness } from "@/lib/completeness";
 import { Button } from "@/components/ui/button";
 import { PageTitle, Panel, Stat, Empty, Status } from "@/components/dash/ui";
-import { reviewCompany, reviewMentor } from "@/app/actions/admin";
+import { reviewCollege, reviewCompany, reviewMentor } from "@/app/actions/admin";
 import { ActionButton } from "@/components/dash/action-form";
 
 export default async function Overview() {
@@ -14,7 +14,7 @@ export default async function Overview() {
     case "MENTOR": return <MentorHome userId={u.id} />;
     case "EMPLOYER": return <EmployerHome userId={u.id} />;
     case "PLATFORM_ADMIN": return <AdminHome />;
-    default: return (<><PageTitle title="College dashboard" /><Panel><Empty>College dashboards (cohort progress, recruiter reach) are not built yet. Your account is ready for them.</Empty></Panel></>);
+    default: return (<><PageTitle title="College dashboard" /><Panel><p className="text-ink-soft">Track how your students are doing and see which of them chose to share their progress.</p><Button asChild className="mt-4"><Link href="/dashboard/college">Open college dashboard</Link></Button></Panel></>);
   }
 }
 
@@ -82,6 +82,7 @@ async function AdminHome() {
     db.company.findMany({ where: { status: "PENDING" }, include: { members: { include: { user: true } } } }),
     db.mentorProfile.findMany({ where: { status: "PENDING" }, include: { user: true } }),
   ]);
+  const pcol = await db.college.findMany({ where: { status: "PENDING" } });
   return (
     <>
       <PageTitle title="Admin overview" />
@@ -101,6 +102,11 @@ async function AdminHome() {
               <div className="mt-2 flex gap-2"><ActionButton variant="primary" action={reviewMentor.bind(null, m.id, "VERIFIED")}>Verify</ActionButton><ActionButton action={reviewMentor.bind(null, m.id, "REJECTED")}>Reject</ActionButton></div></li>))}</ul> : <Empty>Queue is clear.</Empty>}
         </Panel>
       </div>
+      <Panel title={`College verification (${pcol.length})`} className="mt-6">
+        {pcol.length ? <ul className="divide-y divide-line">{pcol.map((c) => (
+          <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="font-semibold">{c.name}</p><p className="text-sm text-ink-soft">{c.city}</p></div>
+            <div className="flex gap-2"><ActionButton variant="primary" action={reviewCollege.bind(null, c.id, "VERIFIED")}>Verify</ActionButton><ActionButton action={reviewCollege.bind(null, c.id, "REJECTED")}>Reject</ActionButton></div></li>))}</ul> : <Empty>Queue is clear.</Empty>}
+      </Panel>
     </>
   );
 }
