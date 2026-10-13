@@ -1,0 +1,114 @@
+# Deploying Kalwings (GitHub → Hostinger, automatic)
+
+**Flow:** you merge a pull request into the main branch → GitHub runs CI → Hostinger pulls the new code, builds it and restarts the app.
+
+> What I verified vs. what I couldn't: the build, migrations, health check, production start, email sign-in and admin bootstrap were all run locally against a real Postgres (email via a mock server). I could **not** log in to Hostinger, GitHub Actions or Resend from here, so the Hostinger menu names and the Actions run itself are unverified. Hostinger moves its menus around; follow the intent, not the exact labels.
+
+## 0. Pick your Hostinger product
+
+| Product | Runs this app? | Notes |
+| --- | --- | --- |
+| **Node.js Web Apps hosting** (Business/Cloud tiers) | Yes | Built-in GitHub import + auto-deploy. **No managed Postgres** that I could find, so use an external one (step 1). [Hostinger Next.js hosting](https://www.hostinger.com/ph/web-apps-hosting/nextjs-hosting) |
+| **VPS** | Yes | You run Postgres yourself (Docker compose included). More work, more control. |
+| Shared/"Premium" PHP hosting | **No** | No Node runtime. |
+
+This guide is **Option A: Node.js Web Apps + external Postgres**. Option B (VPS) is at the bottom.
+
+## 1. Services you need (all have free tiers)
+
+1. **Postgres** — [Neon](https://neon.tech) or [Supabase](https://supabase.com). Create a project and copy the connection string. Keep `?sslmode=require`. (The schema uses Postgres arrays/enums, so MySQL — the database bundled with Hostinger plans — will **not** work.)
+2. **Email for sign-in codes** — [Resend](https://resend.com). Verify your sending domain, create an API key. Without this nobody can log in on production.
+3. A **32+ character secret**: `openssl rand -base64 48`
+
+## 2. Get the code into GitHub the way Hostinger likes
+
+The code currently lives in the `kalwings/` **subfolder** of `Sajeed25/github-slideshow` (a Jekyll template repo). Hostinger deploys a repo root most reliably, so export it as its own repo (do this on your laptop):
+
+```bash
+git clone https://github.com/Sajeed25/github-slideshow.git
+cd github-slideshow && git checkout ccr-9601c933-py5gtg
+cd kalwings && ./scripts/export-standalone-repo.sh ../../kalwings-site
+```
+
+Create an **empty** repo on GitHub named `kalwings` (no README/license), then:
+
+```bash
+cd ../../kalwings-site
+git remote add origin https://github.com/Sajeed25/kalwings.git
+git push -u origin main
+```
+
+The script fixes the CI/CD paths for the new layout. (If you'd rather keep the subfolder, set the *root directory* to `kalwings` in Hostinger, if your plan offers it, and merge to `master` here.)
+
+**Protect the main branch** (GitHub → Settings → Branches): require a pull request and the **CI / verify** check before merging. That makes "merged" mean "builds, lints, typechecks, migrates and boots".
+
+## 3. Create the app in Hostinger
+
+hPanel → **Websites → Add website → Node.js Apps** → **Import Git repository** → authorise GitHub → pick `kalwings` and the `main` branch. Settings:
+
+| Setting | Value |
+| --- | --- |
+| Framework | Next.js |
+| Node version | 22 (20 minimum) |
+| Build command | `npm run build` |
+| Start command | `npm start` (runs `prisma migrate deploy`, then `next start`) |
+| Root directory | `/` (or `kalwings` if you skipped the export) |
+
+**Environment variables** (hPanel → the app → Environment variables):
+
+| Name | Value |
+| --- | --- |
+| `DATABASE_URL` | Neon/Supabase string |
+| `AUTH_SECRET` | the 32+ char secret |
+| `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` (set **before** the build — it's baked in) |
+| `EMAIL_API_KEY`, `EMAIL_FROM` | Resend key; a sender on your verified domain |
+| `ADMIN_EMAILS` | your email — you become platform admin when you first sign in |
+
+Connect your domain and enable SSL, then deploy. Builds need roughly 2 GB RAM.
+
+**Smoke test:** open `https://yourdomain.com/api/health` → `{"ok":true}`. Then sign in at `/login` with your `ADMIN_EMAILS` address, and open `/dashboard`.
+
+If the app refuses to start it names the missing variable (`AUTH_SECRET` / `DATABASE_URL`) in the logs.
+
+## 4. Day-to-day workflow
+
+```
+git checkout -b feature/my-change     # on your laptop (or ask Claude to push a branch)
+git push -u origin feature/my-change  # open a PR on GitHub
+# CI runs → review → Merge → Hostinger auto-deploys main
+```
+
+- **Database changes:** edit `prisma/schema.prisma`, then `npx prisma migrate dev --name what_changed` locally and commit the new `prisma/migrations/*` folder. CI fails if you forget. Migrations run automatically on each deploy (`npm start`). Never edit a migration that has already been deployed.
+- **Rollback:** revert the PR on GitHub (it auto-deploys), or redeploy the previous commit from hPanel. Migrations don't roll back automatically — write forward-fixing migrations.
+- **First admin / more admins:** add emails to `ADMIN_EMAILS`, or run `DATABASE_URL=<prod url> npm run make-admin -- email` from your laptop.
+- **Don't seed sample data in production.** `npm run db:seed` is for local development only.
+
+## 5. Connecting on your laptop
+
+```bash
+git clone https://github.com/Sajeed25/kalwings.git && cd kalwings
+npm install
+cp .env.example .env        # set DATABASE_URL (local Postgres or a free Neon dev branch) + AUTH_SECRET
+npx prisma migrate dev
+npm run db:seed             # sample data, local only
+npm run dev                 # http://localhost:3000  — sign-in codes show on screen in dev
+```
+
+Requires Node 20+ and Postgres 14+ (or a Neon/Supabase dev database). Optional: `npm run test:e2e` with the dev server running.
+
+## 6. Option B — Hostinger VPS (Docker, auto-deploy via GitHub Actions)
+
+1. On the VPS: install Docker, `git clone` the repo to e.g. `/srv/kalwings`, create `/srv/kalwings/.env` with `POSTGRES_PASSWORD`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAILS`, and run `docker compose up -d --build`. Put Caddy or nginx in front for HTTPS → `localhost:3000`.
+2. GitHub → Settings → Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (a deploy key), `VPS_APP_DIR`; Variables: `DEPLOY_VPS=true`. Then every merge to the main branch runs `.github/workflows/deploy-vps.yml`.
+3. Back up the `pgdata` volume (`docker compose exec db pg_dump -U kalwings kalwings > backup.sql`).
+
+The Dockerfile, compose file and deploy workflow are **untested** (no Docker in my environment).
+
+## 7. Before you announce the site
+
+- [ ] Real email delivery works (sign up with a second address).
+- [ ] `/api/health` is OK; set an uptime monitor on it.
+- [ ] No sample users: `npm run db:unseed` against production if you ever ran the seed there.
+- [ ] Mobile sign-in is **not available in production** (no SMS provider) — the form says so.
+- [ ] Replace placeholders (README → "Where to replace placeholders"); lawyer-review Privacy/Terms.
+- [ ] Add a database backup schedule (Neon/Supabase have built-in options).

@@ -45,7 +45,7 @@ export function AuthCard({ mode }: { mode: "join" | "login" }) {
             <input type="hidden" name="identifier" value={s1.identifier} />
             <p className="text-sm text-ink-soft">We sent a 6-digit code to <b className="text-ink">{s1.identifier}</b>.</p>
             {s1.devCode && <p className="rounded-xl border border-dashed border-saffron/60 bg-saffron-50 p-3 text-sm text-saffron-700">Dev mode — no email/SMS provider is connected. Your code is <b>{s1.devCode}</b>.</p>}
-            {join && <label className="block text-sm font-semibold">Your name<input className={f} name="name" autoComplete="name" required minLength={2} /></label>}
+            {join && <label className="block text-sm font-semibold">Your name<input className={f} name="name" defaultValue={s2.name} autoComplete="name" required minLength={2} /></label>}
             {join && <input type="hidden" name="role" value={s1.role} />}
             <label className="block text-sm font-semibold">6-digit code<input className={f} name="code" inputMode="numeric" pattern="\d{6}" maxLength={6} autoComplete="one-time-code" required /></label>
             <Button size="lg" className="w-full" disabled={p2}>{p2 ? "Checking…" : join ? "Create my account" : "Log in"}</Button>

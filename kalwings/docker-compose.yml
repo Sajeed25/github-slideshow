@@ -1,0 +1,27 @@
+# Option B (VPS): app + Postgres on one box.  docker compose up -d --build
+# Put secrets in a .env file next to this one (POSTGRES_PASSWORD, AUTH_SECRET, NEXT_PUBLIC_SITE_URL).
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kalwings
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: kalwings
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kalwings"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://kalwings:${POSTGRES_PASSWORD}@db:5432/kalwings
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    ports: ["3000:3000"]
+volumes:
+  pgdata:

@@ -4,6 +4,7 @@ import type { Role } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { uniqueSlug } from "@/lib/slug";
+import { maybePromoteAdmin } from "@/lib/admin-bootstrap";
 
 export async function GET(req: NextRequest) {
   const fail = (e: string) => NextResponse.redirect(new URL(`/login?error=${e}`, req.url));
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
     const role = (req.cookies.get("kw_oauth_role")?.value ?? "STUDENT") as Exclude<Role, "PLATFORM_ADMIN">;
     user = await db.user.create({ data: { email, googleId: claims.sub, name: claims.name ?? email.split("@")[0], role, ...(role === "STUDENT" ? { student: { create: { slug: uniqueSlug(claims.name ?? "student") } } } : {}) } });
   }
+  user = await maybePromoteAdmin(user);
   await createSession(user.id);
   const res = NextResponse.redirect(new URL(isNew && user.role === "STUDENT" ? "/dashboard/onboarding" : "/dashboard", req.url));
   res.cookies.delete("kw_oauth_state");

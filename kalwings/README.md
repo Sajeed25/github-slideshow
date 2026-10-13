@@ -23,7 +23,7 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 
 ### Platform: what is NOT done
 
-- **No email/SMS delivery.** In dev the OTP is printed to the server console and shown on screen; in production it is never shown and **nothing is sent**, so nobody can log in until you wire a provider in `src/lib/otp.ts` (`TODO(email/SMS)`). Notifications are in-app only.
+- **Email sign-in codes work via Resend** (`EMAIL_API_KEY`, `EMAIL_FROM`; tested against a mock server, not live Resend). **Mobile/SMS sign-in is not available in production** (no SMS provider). In dev the code is shown on screen. Notifications are in-app only. First admin: set `ADMIN_EMAILS`.
 - **Google sign-in is implemented but untested** (needs real `GOOGLE_CLIENT_ID/SECRET` and the callback URL `/api/auth/google/callback`).
 - **File uploads are not built.** Projects take links only; certificates/screenshots need signed-URL storage with type/size limits.
 - **College admin** can sign up but has an empty dashboard.
@@ -45,11 +45,13 @@ npm run dev                      # http://localhost:3000
 
 Sample logins (dev only; OTP appears on screen): `admin@sample.kalwings.test`, `student@sample.kalwings.test`, `sample-mentor-1@sample.kalwings.test`, `sample-co-a@sample.kalwings.test`. These addresses can't receive mail, so they are inert in production, but run `npm run db:unseed` before launch anyway.
 
-Create a real admin: sign in once, then `npm run make-admin -- you@example.com`.
+Create a real admin: put your email in `ADMIN_EMAILS` and sign in, or sign in once and run `npm run make-admin -- you@example.com`.
 
 Tests: with the dev server running and the seed loaded, `npm run test:e2e` drives student/mentor/employer/admin through the real UI (25 checks incl. permission and trust-rule checks). Set `E2E_BASE_URL` and `CHROMIUM_PATH` if needed.
 
 Node 20+.
+
+**Deploying (GitHub → Hostinger, automatic):** see [DEPLOYMENT.md](DEPLOYMENT.md). CI lives in `.github/workflows/ci.yml`.
 
 ## Where to replace placeholders
 

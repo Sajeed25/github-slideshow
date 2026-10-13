@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomInt, timingSafeEqual } from "crypto";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { emailConfigured, sendEmail } from "@/lib/email";
 
 const TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -23,10 +24,18 @@ export async function issueOtp(identifier: string, ip: string): Promise<{ ok: bo
   if (recent >= 5) return { ok: false, error: "Too many codes requested. Try again in an hour." };
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   await db.otpCode.create({ data: { identifier, codeHash: hash(identifier, code), expiresAt: new Date(Date.now() + TTL_MS) } });
-  // TODO(email/SMS): deliver `code` via EMAIL_API_KEY / OTP_PROVIDER_API_KEY here.
   if (process.env.NODE_ENV !== "production") {
     console.log(`[dev] OTP for ${identifier}: ${code}`);
     return { ok: true, devCode: code };
+  }
+  // Production: deliver by email. SMS has no provider wired yet, so mobile sign-in is unavailable.
+  const fail = async (error: string) => { await db.otpCode.deleteMany({ where: { identifier, codeHash: hash(identifier, code) } }); return { ok: false, error }; };
+  if (!identifier.includes("@")) return fail("Mobile sign-in isn't available yet. Please use your email address.");
+  if (!emailConfigured()) return fail("Sign-in email isn't configured. Please contact support.");
+  try {
+    await sendEmail({ to: identifier, subject: "Your Kalwings sign-in code", text: `Your Kalwings code is ${code}. It expires in 10 minutes. If you didn't request it, ignore this email.` });
+  } catch {
+    return fail("We couldn't send the email. Please try again shortly.");
   }
   return { ok: true };
 }

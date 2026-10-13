@@ -8,8 +8,9 @@ import { createSession, destroySession } from "@/lib/session";
 import { clientIp } from "@/lib/request";
 import { uniqueSlug } from "@/lib/slug";
 import { rateLimit } from "@/lib/rate-limit";
+import { maybePromoteAdmin } from "@/lib/admin-bootstrap";
 
-export type AuthState = { step: "identify" | "code"; identifier?: string; devCode?: string; role?: string; error?: string; mode: "join" | "login" };
+export type AuthState = { step: "identify" | "code"; identifier?: string; devCode?: string; role?: string; name?: string; error?: string; mode: "join" | "login" };
 
 export async function requestOtp(prev: AuthState, fd: FormData): Promise<AuthState> {
   const parsed = identifierSchema.safeParse({ identifier: fd.get("identifier") });
@@ -22,10 +23,11 @@ export async function requestOtp(prev: AuthState, fd: FormData): Promise<AuthSta
 
 export async function submitOtp(prev: AuthState, fd: FormData): Promise<AuthState> {
   const parsed = otpSchema.safeParse({ identifier: fd.get("identifier"), code: fd.get("code"), name: fd.get("name") || undefined, role: fd.get("role") || undefined });
-  if (!parsed.success) return { ...prev, error: parsed.error.issues[0].message };
+  const typedName = String(fd.get("name") ?? "");
+  if (!parsed.success) return { ...prev, name: typedName, error: parsed.error.issues[0].message };
   const { identifier, code, name, role } = parsed.data;
-  if (!rateLimit(`verify:${identifier}`, 10, 15 * 60 * 1000)) return { ...prev, error: "Too many attempts. Try again later." };
-  if (!(await verifyOtp(identifier, code))) return { ...prev, error: "That code is invalid or expired." };
+  if (!rateLimit(`verify:${identifier}`, 10, 15 * 60 * 1000)) return { ...prev, name: typedName, error: "Too many attempts. Try again later." };
+  if (!(await verifyOtp(identifier, code))) return { ...prev, name: typedName, error: "That code is invalid or expired." };
 
   const isEmail = identifier.includes("@");
   let user = await db.user.findUnique({ where: isEmail ? { email: identifier } : { phone: identifier } });
@@ -41,6 +43,7 @@ export async function submitOtp(prev: AuthState, fd: FormData): Promise<AuthStat
       },
     });
   }
+  user = await maybePromoteAdmin(user);
   await createSession(user.id);
   redirect(user.role === "STUDENT" && prev.mode === "join" ? "/dashboard/onboarding" : "/dashboard");
 }

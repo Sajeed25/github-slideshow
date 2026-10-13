@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "prisma migrate deploy && next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",
@@ -31,7 +31,8 @@
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^2.6.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "prisma": "^6.19.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -44,9 +45,11 @@
     "eslint-config-next": "15.1.6",
     "playwright-core": "^1.64.0",
     "postcss": "^8.4.49",
-    "prisma": "^6.19.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.23.15",
     "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
