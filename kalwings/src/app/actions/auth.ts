@@ -26,7 +26,7 @@ export async function submitOtp(prev: AuthState, fd: FormData): Promise<AuthStat
   const typedName = String(fd.get("name") ?? "");
   if (!parsed.success) return { ...prev, name: typedName, error: parsed.error.issues[0].message };
   const { identifier, code, name, role } = parsed.data;
-  if (!rateLimit(`verify:${identifier}`, 10, 15 * 60 * 1000)) return { ...prev, name: typedName, error: "Too many attempts. Try again later." };
+  if (!(await rateLimit(`verify:${identifier}`, 10, 15 * 60 * 1000))) return { ...prev, name: typedName, error: "Too many attempts. Try again later." };
   if (!(await verifyOtp(identifier, code))) return { ...prev, name: typedName, error: "That code is invalid or expired." };
 
   const isEmail = identifier.includes("@");

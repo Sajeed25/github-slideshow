@@ -53,13 +53,14 @@ enum SessionStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String?  @unique
-  phone     String?  @unique
-  googleId  String?  @unique
-  name      String
-  role      Role     @default(STUDENT)
-  createdAt DateTime @default(now())
+  emailNotifications Boolean  @default(true)
+  id                 String   @id @default(cuid())
+  email              String?  @unique
+  phone              String?  @unique
+  googleId           String?  @unique
+  name               String
+  role               Role     @default(STUDENT)
+  createdAt          DateTime @default(now())
 
   student       StudentProfile?
   mentor        MentorProfile?
@@ -335,4 +336,25 @@ model ContactMessage {
   message   String    @db.Text
   createdAt DateTime  @default(now())
   handledAt DateTime?
+}
+
+// Persistent rate limiting (survives restarts, shared by all processes).
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
+// Unhandled server errors (no personal data: path without query string, truncated message/stack).
+model ErrorLog {
+  id        String   @id @default(cuid())
+  message   String   @db.VarChar(500)
+  digest    String?
+  path      String?  @db.VarChar(300)
+  stack     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

@@ -1,19 +1,11 @@
-"use client";
-import { motion, useReducedMotion } from "framer-motion";
 import { BadgeCheck, GitBranch, Trophy, QrCode } from "lucide-react";
 import { WingMark } from "@/components/ui/wing";
 import { Badge, SampleTag } from "@/components/ui/badge";
 
 /** Floating Talent Card mock-up. All content is illustrative (sample) and labelled as such. */
 export function TalentCard() {
-  const reduce = useReducedMotion();
   return (
-    <motion.div
-      initial={reduce ? false : { opacity: 0, y: 32, rotate: 2 }}
-      animate={{ opacity: 1, y: 0, rotate: 0 }}
-      transition={{ duration: 0.9, delay: 0.2, ease: [0.21, 0.6, 0.35, 1] }}
-      className="relative mx-auto w-full max-w-[400px]"
-    >
+    <div className="relative mx-auto w-full max-w-[400px] animate-card-in">
       <div aria-hidden className="absolute -inset-8 -z-10 rounded-full bg-brand-gradient opacity-20 blur-3xl" />
       <div className="animate-float rounded-card-lg border border-line bg-surface p-6 shadow-lift">
         <div className="flex items-start justify-between">
@@ -60,6 +52,6 @@ export function TalentCard() {
           <QrCode className="h-7 w-7 text-ink-soft" aria-label="QR code to the public Talent Card" />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -38,6 +38,7 @@ export function OpportunityBrowser({ items: opportunities, initialQ = "", initia
         </label>
       </form>
       <div>
+        <h2 className="sr-only">Results</h2>
         <p className="mb-4 text-sm text-ink-soft" aria-live="polite">{list.length} {list.length === 1 ? "opportunity" : "opportunities"}</p>
         {list.length ? <ul className="grid gap-6 sm:grid-cols-2">{list.map((o) => <li key={o.id}><OpportunityCard o={o} /></li>)}</ul>
           : <p className="card p-10 text-center text-ink-soft">Nothing matches those filters yet. Try widening them.</p>}

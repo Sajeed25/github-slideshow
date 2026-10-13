@@ -1,4 +1,8 @@
 import { chromium } from 'playwright-core';
+import fs from 'fs';
+// Optional: set MAIL_CAPTURE (and start the app with EMAIL_API_URL=<mock>, EMAIL_API_KEY, EMAIL_FROM) to also test notification emails.
+const MAIL = process.env.MAIL_CAPTURE;
+const lastMail = () => (MAIL && fs.existsSync(MAIL) ? JSON.parse(fs.readFileSync(MAIL, 'utf8')) : null);
 // Run against `npm run dev` (OTP codes are only shown in dev). Needs the sample seed (admin@sample.kalwings.test).
 const B = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
@@ -97,10 +101,24 @@ ok(await employer.locator('text=Contact private').count() > 0, 'student contact 
 await employer.click('button:has-text("Move to Shortlisted")'); await employer.waitForTimeout(800);
 await employer.reload();
 ok(await employer.locator(`section[aria-label=Shortlisted] >> text=Test Student ${tag}`).count() > 0, 'moved to Shortlisted');
+if (MAIL) fs.rmSync(MAIL, { force: true });
 await employer.locator('summary:has-text("Notes")').click();
 await employer.fill('input[name=body]', 'Hi! Could we schedule a call?'); await employer.click('button:has-text("Send")'); await employer.waitForSelector('text=Sent');
 await student.goto(`${B}/dashboard/applications`);
 ok(await student.locator('text=Could we schedule a call').count() > 0, 'student sees employer message');
+if (MAIL) {
+  const m = lastMail();
+  ok(!!m && m.body.to[0] === `stu${tag}@example.com` && /New message/.test(m.body.subject), 'employer message emails the student');
+  const link = m?.body.text.match(/https?:\/\/\S+\/unsubscribe\?u=[^&\s]+&t=[a-f0-9]+/)?.[0];
+  ok(!!link, 'email carries a one-click unsubscribe link');
+  const bad = await student.goto(link.replace(/t=[a-f0-9]+/, 't=' + 'a'.repeat(32)));
+  ok((await student.content()).includes("isn't valid") || (await student.content()).includes('isn&#x27;t valid'), 'forged unsubscribe token is rejected');
+  await student.goto(link); await student.click('button:has-text("Turn off notification emails")'); await student.waitForTimeout(1000);
+  fs.rmSync(MAIL, { force: true });
+  await employer.fill('input[name=body]', 'Following up on my message.'); await employer.click('button:has-text("Send")'); await employer.waitForTimeout(1200);
+  ok(lastMail() === null, 'no email after unsubscribing (in-app notification still created)');
+  await student.goto(`${B}/dashboard/applications`);
+}
 await student.fill('input[name=body]', 'Yes, tomorrow works.'); await student.click('button:has-text("Send")'); await student.waitForSelector('text=Sent');
 
 // --- mentor session + endorsement

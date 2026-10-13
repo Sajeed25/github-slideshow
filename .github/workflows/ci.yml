@@ -56,6 +56,10 @@ jobs:
         run: |
           mysql -h127.0.0.1 -uroot -proot -e "CREATE DATABASE kalwings_shadow"
           npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "mysql://root:root@127.0.0.1:3306/kalwings_shadow" --exit-code
+      - name: Rate limiter is atomic and survives a process restart
+        run: |
+          npx tsx e2e/ratelimit.ts fill
+          npx tsx e2e/ratelimit.ts check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build

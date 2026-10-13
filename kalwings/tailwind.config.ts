@@ -36,10 +36,12 @@ const config: Config = {
       keyframes: {
         marquee: { from: { transform: "translateX(0)" }, to: { transform: "translateX(-50%)" } },
         float: { "0%,100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-10px)" } },
+        "card-in": { from: { opacity: "0", transform: "translateY(32px) rotate(2deg)" }, to: { opacity: "1", transform: "none" } },
       },
       animation: {
         marquee: "marquee 40s linear infinite",
         float: "float 7s ease-in-out infinite",
+        "card-in": "card-in .9s .15s cubic-bezier(.21,.6,.35,1) both",
       },
     },
   },

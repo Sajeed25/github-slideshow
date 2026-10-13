@@ -30,7 +30,8 @@
 }
 
 @layer components {
-  .section { @apply py-20 md:py-28; }              /* 80 / 112px — inside 96–128 brief on desktop */
+  /* content-visibility skips layout/paint of off-screen sections until they near the viewport (big win on mobile). */
+  .section { @apply py-20 md:py-28; content-visibility: auto; contain-intrinsic-size: auto 900px; }              /* 80 / 112px — inside 96–128 brief on desktop */
   .eyebrow { @apply text-sm font-semibold uppercase tracking-[0.14em] text-teal-700; }
   [data-theme="dark"] .eyebrow { @apply text-teal; }
   .h-display { @apply text-[2.5rem] leading-[1.05] md:text-[4.25rem]; font-weight: 800; letter-spacing: -0.03em; }
@@ -46,6 +47,14 @@
       rgb(var(--muted)); }
 }
 
+/* Scroll reveal (toggled by <RevealObserver />). Only hides content when JS is running (html.js). */
+html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s cubic-bezier(.21,.6,.35,1), transform .6s cubic-bezier(.21,.6,.35,1); }
+html.js .reveal.is-visible { opacity: 1; transform: none; }
+html.js .draw .draw-line { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.8s ease-in-out; }
+html.js .draw.is-visible .draw-line { stroke-dashoffset: 0; }
+
 @media (prefers-reduced-motion: reduce) {
+  html.js .reveal { opacity: 1; transform: none; }
+  html.js .draw .draw-line { stroke-dashoffset: 0; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

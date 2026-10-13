@@ -20,6 +20,7 @@ export function MentorDirectory({ items: mentors }: { items: Mentor[] }) {
         <select id="c" className={sel} value={country} onChange={(e) => setCountry(e.target.value)}><option value="">All countries</option>{uniq(mentors.map((m) => m.country)).map((d) => <option key={d}>{d}</option>)}</select>
         <label className="flex items-center gap-2 text-[15px]"><input type="checkbox" checked={avail} onChange={(e) => setAvail(e.target.checked)} className="h-4 w-4 accent-teal-600" />Available now</label>
       </form>
+      <h2 className="sr-only">Mentors</h2>
       <p className="mt-4 text-sm text-ink-soft" aria-live="polite">{list.length} verified mentors</p>
       <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{list.map((m) => <li key={m.slug}><MentorCard m={m} /></li>)}</ul>
     </div>

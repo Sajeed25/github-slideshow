@@ -14,7 +14,7 @@ const links: Record<Role, [string, string][]> = {
   MENTOR: [["Overview", "/dashboard"], ["Mentor profile", "/dashboard/mentoring"]],
   EMPLOYER: [["Overview", "/dashboard"], ["Company", "/dashboard/company"], ["Roles & challenges", "/dashboard/roles"], ["Talent search", "/dashboard/talent"], ["Pipeline", "/dashboard/pipeline"]],
   COLLEGE_ADMIN: [["Overview", "/dashboard"], ["College", "/dashboard/college"]],
-  PLATFORM_ADMIN: [["Overview & queues", "/dashboard"], ["Listing moderation", "/dashboard/moderation"], ["Reports", "/dashboard/reports"], ["Contact inbox", "/dashboard/inbox"], ["Audit log", "/dashboard/audit"]],
+  PLATFORM_ADMIN: [["Overview & queues", "/dashboard"], ["Listing moderation", "/dashboard/moderation"], ["Reports", "/dashboard/reports"], ["Contact inbox", "/dashboard/inbox"], ["Server errors", "/dashboard/errors"], ["Audit log", "/dashboard/audit"]],
 };
 
 export default async function DashLayout({ children }: { children: React.ReactNode }) {

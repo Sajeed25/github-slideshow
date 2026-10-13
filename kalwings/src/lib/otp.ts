@@ -19,7 +19,7 @@ const hash = (id: string, code: string) => createHash("sha256").update(`${proces
 
 /** Creates an OTP. Returns the code ONLY outside production (no SMS/email provider is wired yet). */
 export async function issueOtp(identifier: string, ip: string): Promise<{ ok: boolean; devCode?: string; error?: string }> {
-  if (!rateLimit(`otp-ip:${ip}`, 20, 60 * 60 * 1000)) return { ok: false, error: "Too many requests. Try again later." };
+  if (!(await rateLimit(`otp-ip:${ip}`, 20, 60 * 60 * 1000))) return { ok: false, error: "Too many requests. Try again later." };
   const recent = await db.otpCode.count({ where: { identifier, createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } } });
   if (recent >= 5) return { ok: false, error: "Too many codes requested. Try again in an hour." };
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");

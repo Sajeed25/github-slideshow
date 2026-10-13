@@ -2,7 +2,7 @@
 
 > Your potential deserves to be seen.
 
-Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix Slot + CVA (shadcn-style components).
+Next.js 15 (App Router) · TypeScript · Tailwind CSS · Prisma + MySQL/MariaDB · Radix Slot + CVA (shadcn-style components). Animations are CSS + one tiny IntersectionObserver (Framer Motion was removed: it cost ~25 Lighthouse points on mobile).
 
 ## Status
 
@@ -22,13 +22,19 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 - **Admin:** company, mentor and college verification queues, listing moderation, fraud/abuse reports, analytics counts, audit log.
 - Public `/opportunities` and `/mentors` read from the database (verified + moderated only). The homepage still uses `src/data/sample.ts` as a showcase.
 
+### Also built
+
+- **Notification emails** for applications, sessions and messages (needs `EMAIL_API_KEY`/`EMAIL_FROM`): capped at 10/hour/user, per-user opt-out in Notifications, and a signed one-click unsubscribe link in every email.
+- **Database-backed rate limiting** (shared by all processes, survives restarts, atomic under concurrent requests; fails open if the DB errors).
+- **Error logging + friendly error pages**, admin *Server errors* page.
+- **Performance/accessibility:** Lighthouse (simulated mobile, production build, local): performance 91–99, accessibility 100, best practices 100 on all public pages; SEO 100 (login/join/Talent Cards are deliberately `noindex`, scoring 66). Real-world numbers on Hostinger will differ, so re-run Lighthouse after deploying.
+
 ### Platform: what is NOT done
 
 - **Email sign-in codes work via Resend** (`EMAIL_API_KEY`, `EMAIL_FROM`; tested against a mock server, not live Resend). **Mobile/SMS sign-in is not available in production** (no SMS provider). In dev the code is shown on screen. Notifications are in-app only. First admin: set `ADMIN_EMAILS`.
 - **Google sign-in is implemented but untested** (needs real `GOOGLE_CLIENT_ID/SECRET` and the callback URL `/api/auth/google/callback`).
 - **File uploads are not built.** Projects take links only; certificates/screenshots need signed-URL storage with type/size limits.
-- **Rate limiting is in-memory** (`src/lib/rate-limit.ts`): fine for one instance; use Redis/Upstash for several. OTP issuance is also limited per identifier in the database.
-- No analytics/error-monitoring SDK (Sentry etc.) yet.
+- No third-party analytics or Sentry. Instead: unhandled server errors are stored (no personal data) and shown to admins at *Server errors*; add Sentry/analytics if you want alerts or traffic stats.
 - Done and tested in production mode: Contact form (stored in DB, honeypot + rate limit, admin inbox, optional email), Open Graph/Twitter image, installable PWA (manifest, PNG icons, safe service worker with offline page — private pages are never cached), Content Security Policy + HSTS.
 - Mentor sessions don't include video links; mentor and student agree the link in messages/email.
 - Security notes: Next.js server actions enforce same-origin; the Google routes use a state cookie. Add a CSP and review before launch.
@@ -88,6 +94,5 @@ Pay, work mode, location and eligibility always shown · unpaid roles labelled �
 ## Next steps
 
 1. SMS provider for mobile sign-in; verify Google sign-in against real credentials.
-2. Secure uploads, Sentry + analytics.
-3. Redis/DB-backed rate limiting if you run more than one instance.
-4. Real legal copy, real content, `next/image` once photos exist; Lighthouse on real content.
+2. Secure uploads (needs persistent/external storage — Hostinger may wipe local files on redeploy), Sentry/analytics if wanted.
+3. Real legal copy, real content, `next/image` once photos exist; Lighthouse on real content.

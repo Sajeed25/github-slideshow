@@ -29,8 +29,10 @@ export function DraftNotice({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-dashed border-saffron/60 bg-saffron-50 p-4 text-sm text-saffron-700 dark:bg-saffron/10 dark:text-saffron">{children}</p>;
 }
 
-export function FeatureGrid({ items }: { items: { t: string; d: string }[] }) {
+export function FeatureGrid({ items, heading = "Highlights" }: { items: { t: string; d: string }[]; heading?: string }) {
   return (
+    <>
+    <h2 className="sr-only">{heading}</h2>
     <ul className="grid gap-6 md:grid-cols-3">
       {items.map((f, i) => (
         <Reveal as="li" key={f.t} delay={i * 0.06}>
@@ -38,5 +40,6 @@ export function FeatureGrid({ items }: { items: { t: string; d: string }[] }) {
         </Reveal>
       ))}
     </ul>
+    </>
   );
 }

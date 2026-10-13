@@ -1,5 +1,3 @@
-"use client";
-import { motion, useReducedMotion } from "framer-motion";
 import { Briefcase, Building2, GraduationCap, UserPlus, BookOpen, ShieldCheck, Eye, PartyPopper } from "lucide-react";
 import { Reveal } from "@/components/ui/reveal";
 
@@ -43,7 +41,6 @@ const steps = [
 ];
 
 export function Journey() {
-  const reduce = useReducedMotion();
   return (
     <section className="section bg-muted">
       <div className="container">
@@ -52,12 +49,13 @@ export function Journey() {
           <h2 className="h-section mt-3">Five steps from potential to proof to offer.</h2>
         </Reveal>
         <div className="relative mt-16">
-          <svg aria-hidden className="absolute left-0 right-0 top-6 hidden h-1 w-full lg:block" preserveAspectRatio="none" viewBox="0 0 100 1">
-            <defs><linearGradient id="jl"><stop offset="0" stopColor="#14B8A6" /><stop offset="1" stopColor="#38BDF8" /></linearGradient></defs>
-            <line x1="10" y1=".5" x2="90" y2=".5" stroke="rgb(var(--line))" strokeWidth=".6" vectorEffect="non-scaling-stroke" />
-            <motion.line x1="10" y1=".5" x2="90" y2=".5" stroke="url(#jl)" strokeWidth=".6" vectorEffect="non-scaling-stroke"
-              initial={reduce ? false : { pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true, margin: "-120px" }} transition={{ duration: 1.8, ease: "easeInOut" }} />
-          </svg>
+          <div aria-hidden className="draw absolute left-[10%] right-[10%] top-6 hidden h-1 lg:block">
+            <svg className="h-1 w-full" preserveAspectRatio="none" viewBox="0 0 100 1">
+              <defs><linearGradient id="jl" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="0"><stop offset="0" stopColor="#14B8A6" /><stop offset="1" stopColor="#38BDF8" /></linearGradient></defs>
+              <line x1="0" y1=".5" x2="100" y2=".5" stroke="rgb(var(--line))" strokeWidth=".5" />
+              <line className="draw-line" x1="0" y1=".5" x2="100" y2=".5" pathLength={1} stroke="url(#jl)" strokeWidth=".5" />
+            </svg>
+          </div>
           <ol className="grid gap-10 lg:grid-cols-5">
             {steps.map(({ Icon, t, d }, i) => (
               <Reveal as="li" key={t} delay={i * 0.1} className="relative lg:text-center">

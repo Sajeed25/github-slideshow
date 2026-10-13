@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { RevealObserver } from "@/components/reveal-observer";
 import { site } from "@/lib/site";
 
 const orgLd = { "@context": "https://schema.org", "@type": "Organization", name: "Kalwings", url: site.url, slogan: site.tagline, description: site.description, address: { "@type": "PostalAddress", addressRegion: "Telangana", addressCountry: "IN" } };
@@ -29,7 +30,7 @@ export const viewport: Viewport = {
 };
 
 // Sets the theme before first paint to avoid a flash.
-const themeScript = `try{var t=localStorage.getItem('kw-theme');if(t)document.documentElement.dataset.theme=t;else if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.dataset.theme='dark'}catch(e){}`;
+const themeScript = `document.documentElement.classList.add('js');try{var t=localStorage.getItem('kw-theme');if(t)document.documentElement.dataset.theme=t;else if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.dataset.theme='dark'}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main">{children}</main>
         <Footer />
         <ServiceWorkerRegister />
+        <RevealObserver />
       </body>
     </html>
   );

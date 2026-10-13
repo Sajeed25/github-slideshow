@@ -12,7 +12,7 @@ export async function sendMessage(_: Result, fd: FormData): Promise<Result> {
   const u = await requireActionRole("STUDENT", "EMPLOYER");
   const r = messageSchema.safeParse(obj(fd));
   if (!r.success) return fail(r.error);
-  if (!rateLimit(`msg:${u.id}`, 30, 60_000)) return { error: "Slow down a little." };
+  if (!(await rateLimit(`msg:${u.id}`, 30, 60_000))) return { error: "Slow down a little." };
   const app = await db.application.findUnique({ where: { id: r.data.applicationId }, include: { student: true, opportunity: { include: { company: { include: { members: true } } } } } });
   if (!app) return { error: "Not found" };
   const isStudent = app.student.userId === u.id;
@@ -31,7 +31,14 @@ export async function reportContent(_: Result, fd: FormData): Promise<Result> {
   const u = await requireActionRole();
   const r = reportSchema.safeParse(obj(fd));
   if (!r.success) return fail(r.error);
-  if (!rateLimit(`report:${u.id}`, 10, 60 * 60 * 1000)) return { error: "Too many reports. Try again later." };
+  if (!(await rateLimit(`report:${u.id}`, 10, 60 * 60 * 1000))) return { error: "Too many reports. Try again later." };
   await db.report.create({ data: { ...r.data, reporterId: u.id } });
+  return { ok: true };
+}
+
+export async function setEmailNotifications(_: Result, fd: FormData): Promise<Result> {
+  const u = await requireActionRole();
+  await db.user.update({ where: { id: u.id }, data: { emailNotifications: fd.get("email") === "on" } });
+  revalidatePath("/dashboard", "layout");
   return { ok: true };
 }

@@ -1,20 +1,10 @@
-"use client";
-import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-/** Fade-and-rise on scroll. Falls back to static when reduced motion is requested. */
+/**
+ * Fade-and-rise on scroll. Pure CSS (see globals.css) toggled by the single <RevealObserver /> in the layout,
+ * so it costs no per-element JavaScript. Content is fully visible without JS or with reduced motion.
+ */
 export function Reveal({ children, delay = 0, className, as = "div" }: { children: React.ReactNode; delay?: number; className?: string; as?: "div" | "li" }) {
-  const reduce = useReducedMotion();
-  const Comp = as === "li" ? motion.li : motion.div;
-  return (
-    <Comp
-      className={cn(className)}
-      initial={reduce ? false : { opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.6, delay, ease: [0.21, 0.6, 0.35, 1] }}
-    >
-      {children}
-    </Comp>
-  );
+  const Comp = as;
+  return <Comp className={cn("reveal", className)} style={delay ? { transitionDelay: `${delay}s` } : undefined}>{children}</Comp>;
 }
