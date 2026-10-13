@@ -1,0 +1,230 @@
+// Kalwings data model (MVP). Not yet wired into the app — see README → Platform roadmap.
+// Setup: npm i prisma @prisma/client && npx prisma migrate dev
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role { STUDENT MENTOR EMPLOYER COLLEGE_ADMIN PLATFORM_ADMIN }
+enum VerificationStatus { PENDING VERIFIED REJECTED }
+enum OpportunityType { INTERNSHIP JOB CHALLENGE }
+enum WorkMode { REMOTE HYBRID ONSITE }
+enum ApplicationStage { APPLIED SHORTLISTED INTERVIEW OFFER REJECTED WITHDRAWN }
+enum SessionStatus { REQUESTED ACCEPTED DECLINED COMPLETED CANCELLED }
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  phone     String?  @unique
+  name      String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+
+  student       StudentProfile?
+  mentor        MentorProfile?
+  employer      EmployerMember?
+  college       CollegeAdmin?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model StudentProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug           String   @unique // public Talent Card URL
+  headline       String?
+  graduationYear Int?
+  collegeId      String?
+  college        College? @relation(fields: [collegeId], references: [id])
+  // Contact details live on User and are NEVER returned by public queries.
+  contactVisible Boolean  @default(false)
+  completeness   Int      @default(0) // 0–100 profile completeness score
+  projects       Project[]
+  skills         SkillEvidence[]
+  applications   Application[]
+  savedRoles     SavedOpportunity[]
+  sessions       MentorSession[]
+  endorsements   Endorsement[]
+}
+
+model Project {
+  id        String         @id @default(cuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title     String
+  summary   String
+  githubUrl String?
+  demoUrl   String?
+  fileKeys  String[] // storage keys (certificates, screenshots)
+}
+
+// A badge/skill is only displayable when backed by evidence or a defined assessment.
+model SkillEvidence {
+  id          String         @id @default(cuid())
+  studentId   String
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill       String
+  basis       String // "assessment:<id>" | "project:<id>" | "challenge:<id>" | "endorsement:<id>"
+  explanation String // shown on badge hover
+  awardedAt   DateTime       @default(now())
+}
+
+model MentorProfile {
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug              String             @unique
+  roleTitle         String
+  company           String
+  country           String
+  domain            String
+  tags              String[]
+  bio               String?
+  status            VerificationStatus @default(PENDING)
+  slots             OfficeHourSlot[]
+  sessions          MentorSession[]
+  endorsementsGiven Endorsement[]
+}
+
+model OfficeHourSlot {
+  id       String        @id @default(cuid())
+  mentorId String
+  mentor   MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  startsAt DateTime
+  endsAt   DateTime
+}
+
+model MentorSession {
+  id        String         @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile  @relation(fields: [mentorId], references: [id])
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id])
+  topic     String
+  status    SessionStatus  @default(REQUESTED)
+  startsAt  DateTime?
+}
+
+model Endorsement {
+  id        String         @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile  @relation(fields: [mentorId], references: [id])
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id])
+  text      String
+  evidence  String // required: link/reference to the work being endorsed
+  createdAt DateTime       @default(now())
+}
+
+model Company {
+  id            String             @id @default(cuid())
+  name          String
+  website       String?
+  status        VerificationStatus @default(PENDING) // no posting/search access until VERIFIED
+  members       EmployerMember[]
+  opportunities Opportunity[]
+}
+
+model EmployerMember {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+}
+
+model Opportunity {
+  id           String             @id @default(cuid())
+  companyId    String
+  company      Company            @relation(fields: [companyId], references: [id])
+  title        String
+  type         OpportunityType
+  description  String
+  // Trust rules: pay, mode, location, eligibility are REQUIRED.
+  payMinINR    Int? // monthly (internship) or annual (job); null only when unpaid
+  payMaxINR    Int?
+  payText      String // human-readable, always displayed
+  unpaid       Boolean            @default(false)
+  workMode     WorkMode
+  location     String
+  eligibility  String
+  gradYears    Int[]
+  skills       String[]
+  deadline     DateTime
+  sponsored    Boolean            @default(false) // must be labelled "Sponsored"; never implies verification
+  moderated    VerificationStatus @default(PENDING)
+  applications Application[]
+  saved        SavedOpportunity[]
+  createdAt    DateTime           @default(now())
+}
+
+model Application {
+  id            String           @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id])
+  studentId     String
+  student       StudentProfile   @relation(fields: [studentId], references: [id])
+  stage         ApplicationStage @default(APPLIED)
+  employerNotes String?
+  createdAt     DateTime         @default(now())
+
+  @@unique([opportunityId, studentId])
+}
+
+model SavedOpportunity {
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  opportunityId String
+  opportunity   Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, opportunityId])
+}
+
+model College {
+  id       String           @id @default(cuid())
+  name     String
+  city     String?
+  students StudentProfile[]
+  admins   CollegeAdmin[]
+}
+
+model CollegeAdmin {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collegeId String
+  college   College @relation(fields: [collegeId], references: [id])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Report {
+  id         String    @id @default(cuid())
+  targetType String
+  targetId   String
+  reason     String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String
+  target    String
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,9 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Kalwings", short_name: "Kalwings", description: "Your potential deserves to be seen.",
+    start_url: "/", display: "standalone", background_color: "#FAFAF7", theme_color: "#0B1B3F",
+    icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+  };
+}
