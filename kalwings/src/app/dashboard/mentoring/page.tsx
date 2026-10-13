@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { asList } from "@/lib/lists";
 import { db } from "@/lib/db";
 import { requirePageRole } from "@/lib/session";
 import { ActionButton, ActionForm, Area, Field } from "@/components/dash/action-form";
@@ -34,7 +35,7 @@ async function MentorView({ userId }: { userId: string }) {
             <Field label="Role" name="roleTitle" defaultValue={m?.roleTitle} required />
             <Field label="Company" name="company" defaultValue={m?.company} required />
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Country" name="country" defaultValue={m?.country} required /><Field label="Domain" name="domain" defaultValue={m?.domain} required placeholder="AI / ML, Design…" /></div>
-            <Field label="Expertise tags (comma-separated)" name="tags" defaultValue={m?.tags.join(", ")} />
+            <Field label="Expertise tags (comma-separated)" name="tags" defaultValue={asList(m?.tags).join(", ")} />
             <Area label="Bio" name="bio" defaultValue={m?.bio ?? ""} />
           </ActionForm>
         </Panel>

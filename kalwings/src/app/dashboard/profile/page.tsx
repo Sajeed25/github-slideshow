@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { asList } from "@/lib/lists";
 import { requirePageRole } from "@/lib/session";
 import { ActionForm, Area, Field, ActionButton } from "@/components/dash/action-form";
 import { PageTitle, Panel } from "@/components/dash/ui";
@@ -16,7 +17,7 @@ export default async function Page() {
             <Field label="Full name" name="name" defaultValue={u.name} required />
             <Field label="Headline" name="headline" defaultValue={p.headline ?? ""} required />
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Graduation year" name="graduationYear" type="number" defaultValue={p.graduationYear ?? ""} required /><Field label="City" name="city" defaultValue={p.city ?? ""} /></div>
-            <Field label="Skills (comma-separated)" name="skills" defaultValue={p.skillsClaimed.join(", ")} hint="Self-declared. Verified badges come only from evidence." />
+            <Field label="Skills (comma-separated)" name="skills" defaultValue={asList(p.skillsClaimed).join(", ")} hint="Self-declared. Verified badges come only from evidence." />
             <Area label="Bio" name="bio" defaultValue={p.bio ?? ""} />
             <Field label="GitHub" name="githubUrl" type="url" defaultValue={p.githubUrl ?? ""} />
             <Field label="Looking for" name="lookingFor" defaultValue={p.lookingFor ?? ""} />

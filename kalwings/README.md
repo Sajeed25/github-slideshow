@@ -36,9 +36,11 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 
 ```bash
 cd kalwings
+# needs a local MySQL/MariaDB, e.g.:  docker run -d -p 3306:3306 -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=kalwings mariadb:10.11
+#   then DATABASE_URL=mysql://root:root@localhost:3306/kalwings
 npm install                      # also runs `prisma generate`
 cp .env.example .env             # set DATABASE_URL and AUTH_SECRET (32+ chars)
-npx prisma migrate dev           # creates tables (Postgres 14+)
+npx prisma migrate dev           # creates tables (MySQL 8 / MariaDB 10.6+)
 npm run db:seed                  # SAMPLE mentors, companies, listings, admin + student
 npm run dev                      # http://localhost:3000
 ```

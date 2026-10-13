@@ -2,21 +2,25 @@
 
 **Flow:** you merge a pull request into the main branch → GitHub runs CI → Hostinger pulls the new code, builds it and restarts the app.
 
-> What I verified vs. what I couldn't: the build, migrations, health check, production start, email sign-in and admin bootstrap were all run locally against a real Postgres (email via a mock server). I could **not** log in to Hostinger, GitHub Actions or Resend from here, so the Hostinger menu names and the Actions run itself are unverified. Hostinger moves its menus around; follow the intent, not the exact labels.
+> What I verified vs. what I couldn't: the build, migrations, health check, production start, email sign-in and admin bootstrap were all run locally against a real **MariaDB** (the engine behind Hostinger's MySQL; email via a mock server). I could **not** log in to Hostinger, GitHub Actions or Resend from here, so the Hostinger menu names and the Actions run itself are unverified. Hostinger moves its menus around; follow the intent, not the exact labels.
 
 ## 0. Pick your Hostinger product
 
 | Product | Runs this app? | Notes |
 | --- | --- | --- |
-| **Node.js Web Apps hosting** (Business/Cloud tiers) | Yes | Built-in GitHub import + auto-deploy. **No managed Postgres** that I could find, so use an external one (step 1). [Hostinger Next.js hosting](https://www.hostinger.com/ph/web-apps-hosting/nextjs-hosting) |
-| **VPS** | Yes | You run Postgres yourself (Docker compose included). More work, more control. |
+| **Node.js Web Apps hosting** (Business/Cloud tiers) | Yes | Built-in GitHub import + auto-deploy, and its **MySQL** databases work with this app. [Hostinger Next.js hosting](https://www.hostinger.com/ph/web-apps-hosting/nextjs-hosting) |
+| **VPS** | Yes | You run the database yourself (MariaDB in the included Docker compose). More work, more control. |
 | Shared/"Premium" PHP hosting | **No** | No Node runtime. |
 
-This guide is **Option A: Node.js Web Apps + external Postgres**. Option B (VPS) is at the bottom.
+This guide is **Option A: Node.js Web Apps + Hostinger MySQL**. Option B (VPS) is at the bottom.
 
-## 1. Services you need (all have free tiers)
+## 1. Services you need
 
-1. **Postgres** — [Neon](https://neon.tech) or [Supabase](https://supabase.com). Create a project and copy the connection string. Keep `?sslmode=require`. (The schema uses Postgres arrays/enums, so MySQL — the database bundled with Hostinger plans — will **not** work.)
+1. **MySQL database** — hPanel → **Databases → MySQL Databases** → create a database, a user and a password. Your connection string is:
+   `mysql://USER:PASSWORD@HOST:3306/DBNAME?connection_limit=5`
+   - `HOST` is `localhost` when the database and the Node app are on the same Hostinger account; otherwise use the remote host shown in hPanel and allow the app's IP under *Remote MySQL*. (Unverified for your plan — hPanel shows the exact host.)
+   - URL-encode special characters in the password (`@`→`%40`, `#`→`%23`, `/`→`%2F`).
+   - Hostinger database users usually **can't create databases**. That's fine: production only runs `prisma migrate deploy`, which needs no extra privileges. (Local development uses `migrate dev`, which does — use a local MariaDB/MySQL for that.)
 2. **Email for sign-in codes** — [Resend](https://resend.com). Verify your sending domain, create an API key. Without this nobody can log in on production.
 3. A **32+ character secret**: `openssl rand -base64 48`
 
@@ -58,7 +62,7 @@ hPanel → **Websites → Add website → Node.js Apps** → **Import Git reposi
 
 | Name | Value |
 | --- | --- |
-| `DATABASE_URL` | Neon/Supabase string |
+| `DATABASE_URL` | the MySQL string from step 1 |
 | `AUTH_SECRET` | the 32+ char secret |
 | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` (set **before** the build — it's baked in) |
 | `EMAIL_API_KEY`, `EMAIL_FROM` | Resend key; a sender on your verified domain |
@@ -88,19 +92,19 @@ git push -u origin feature/my-change  # open a PR on GitHub
 ```bash
 git clone https://github.com/Sajeed25/kalwings.git && cd kalwings
 npm install
-cp .env.example .env        # set DATABASE_URL (local Postgres or a free Neon dev branch) + AUTH_SECRET
+cp .env.example .env        # set DATABASE_URL (local MariaDB/MySQL) + AUTH_SECRET
 npx prisma migrate dev
 npm run db:seed             # sample data, local only
 npm run dev                 # http://localhost:3000  — sign-in codes show on screen in dev
 ```
 
-Requires Node 20+ and Postgres 14+ (or a Neon/Supabase dev database). Optional: `npm run test:e2e` with the dev server running.
+Requires Node 20+ and MySQL 8 / MariaDB 10.6+. Quick local database: `docker run -d -p 3306:3306 -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=kalwings mariadb:10.11`, then `DATABASE_URL=mysql://root:root@localhost:3306/kalwings`. Optional: `npm run test:e2e` with the dev server running.
 
 ## 6. Option B — Hostinger VPS (Docker, auto-deploy via GitHub Actions)
 
-1. On the VPS: install Docker, `git clone` the repo to e.g. `/srv/kalwings`, create `/srv/kalwings/.env` with `POSTGRES_PASSWORD`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAILS`, and run `docker compose up -d --build`. Put Caddy or nginx in front for HTTPS → `localhost:3000`.
+1. On the VPS: install Docker, `git clone` the repo to e.g. `/srv/kalwings`, create `/srv/kalwings/.env` with `DB_PASSWORD`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `EMAIL_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAILS`, and run `docker compose up -d --build`. Put Caddy or nginx in front for HTTPS → `localhost:3000`.
 2. GitHub → Settings → Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (a deploy key), `VPS_APP_DIR`; Variables: `DEPLOY_VPS=true`. Then every merge to the main branch runs `.github/workflows/deploy-vps.yml`.
-3. Back up the `pgdata` volume (`docker compose exec db pg_dump -U kalwings kalwings > backup.sql`).
+3. Back up the `dbdata` volume (`docker compose exec db mariadb-dump -uroot -p"$DB_PASSWORD" kalwings > backup.sql`).
 
 The Dockerfile, compose file and deploy workflow are **untested** (no Docker in my environment).
 
@@ -111,4 +115,4 @@ The Dockerfile, compose file and deploy workflow are **untested** (no Docker in 
 - [ ] No sample users: `npm run db:unseed` against production if you ever ran the seed there.
 - [ ] Mobile sign-in is **not available in production** (no SMS provider) — the form says so.
 - [ ] Replace placeholders (README → "Where to replace placeholders"); lawyer-review Privacy/Terms.
-- [ ] Add a database backup schedule (Neon/Supabase have built-in options).
+- [ ] Schedule database backups (hPanel has backup tools for MySQL, or `mariadb-dump` on a cron).

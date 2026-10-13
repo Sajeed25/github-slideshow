@@ -6,7 +6,7 @@ import { resolveReport } from "@/app/actions/admin";
 
 export default async function Page() {
   await requirePageRole("PLATFORM_ADMIN");
-  const items = await db.report.findMany({ orderBy: [{ resolvedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }], take: 100, include: { reporter: { select: { name: true } } } });
+  const items = await db.report.findMany({ orderBy: [{ resolvedAt: "asc" }, { createdAt: "desc" }], take: 100, include: { reporter: { select: { name: true } } } });
   return (
     <>
       <PageTitle title="Fraud & abuse reports" />

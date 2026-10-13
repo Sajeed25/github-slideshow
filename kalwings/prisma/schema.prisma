@@ -1,11 +1,11 @@
-// Kalwings data model (MVP). Not yet wired into the app — see README → Platform roadmap.
-// Setup: npm i prisma @prisma/client && npx prisma migrate dev
+// Kalwings data model. MySQL / MariaDB (Hostinger-compatible).
+// Lists (skills, tags, …) are stored as JSON arrays; read them with asList() from src/lib/lists.ts.
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -78,11 +78,11 @@ model StudentProfile {
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   slug           String             @unique // public Talent Card URL
   headline       String?
-  bio            String?
+  bio            String?            @db.Text
   city           String?
-  githubUrl      String?
-  skillsClaimed  String[]
-  lookingFor     String?
+  githubUrl      String?            @db.VarChar(400)
+  skillsClaimed  Json?
+  lookingFor     String?            @db.Text
   graduationYear Int?
   collegeId      String?
   college        College?           @relation(fields: [collegeId], references: [id])
@@ -103,10 +103,10 @@ model Project {
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   title     String
-  summary   String
-  githubUrl String?
-  demoUrl   String?
-  fileKeys  String[] // storage keys (certificates, screenshots)
+  summary   String         @db.Text
+  githubUrl String?        @db.VarChar(400)
+  demoUrl   String?        @db.VarChar(400)
+  fileKeys  Json? // storage keys (certificates, screenshots)
 }
 
 // A badge/skill is only displayable when backed by evidence or a defined assessment.
@@ -116,7 +116,7 @@ model SkillEvidence {
   student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   skill       String
   basis       String // "assessment:<id>" | "project:<id>" | "challenge:<id>" | "endorsement:<id>"
-  explanation String // shown on badge hover
+  explanation String         @db.Text // shown on badge hover
   awardedAt   DateTime       @default(now())
 }
 
@@ -130,8 +130,8 @@ model MentorProfile {
   company           String
   country           String
   domain            String
-  tags              String[]
-  bio               String?
+  tags              Json?
+  bio               String?            @db.Text
   status            VerificationStatus @default(PENDING)
   verifiedAt        DateTime?
   slots             OfficeHourSlot[]
@@ -154,7 +154,7 @@ model MentorSession {
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id])
   topic     String
-  message   String?
+  message   String?        @db.Text
   createdAt DateTime       @default(now())
   status    SessionStatus  @default(REQUESTED)
   startsAt  DateTime?
@@ -166,8 +166,8 @@ model Endorsement {
   mentor    MentorProfile  @relation(fields: [mentorId], references: [id])
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id])
-  text      String
-  evidence  String // required: link/reference to the work being endorsed
+  text      String         @db.Text
+  evidence  String         @db.VarChar(400) // required: link/reference to the work being endorsed
   createdAt DateTime       @default(now())
 }
 
@@ -175,10 +175,10 @@ model Company {
   isSample      Boolean            @default(false) // seeded placeholder; UI shows a "Sample" tag
   id            String             @id @default(cuid())
   name          String
-  website       String?
+  website       String?            @db.VarChar(400)
   status        VerificationStatus @default(PENDING) // no posting/search access until VERIFIED
   verifiedAt    DateTime?
-  about         String?
+  about         String?            @db.Text
   shortlists    Shortlist[]
   members       EmployerMember[]
   opportunities Opportunity[]
@@ -198,7 +198,7 @@ model Opportunity {
   company      Company            @relation(fields: [companyId], references: [id])
   title        String
   type         OpportunityType
-  description  String
+  description  String             @db.Text
   // Trust rules: pay, mode, location, eligibility are REQUIRED.
   payMinINR    Int? // monthly (internship) or annual (job); null only when unpaid
   payMaxINR    Int?
@@ -208,8 +208,8 @@ model Opportunity {
   workMode     WorkMode
   location     String
   eligibility  String
-  gradYears    Int[]
-  skills       String[]
+  gradYears    Json?
+  skills       Json?
   deadline     DateTime
   sponsored    Boolean            @default(false) // must be labelled "Sponsored"; never implies verification
   moderated    VerificationStatus @default(PENDING)
@@ -225,7 +225,7 @@ model Application {
   studentId     String
   student       StudentProfile   @relation(fields: [studentId], references: [id])
   stage         ApplicationStage @default(APPLIED)
-  employerNotes String?
+  employerNotes String?          @db.Text
   messages      Message[]
   createdAt     DateTime         @default(now())
 
@@ -262,7 +262,7 @@ model Notification {
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
-  body      String?
+  body      String?   @db.Text
   readAt    DateTime?
   createdAt DateTime  @default(now())
 }
@@ -273,7 +273,7 @@ model Report {
   id         String    @id @default(cuid())
   targetType String
   targetId   String
-  reason     String
+  reason     String    @db.Text
   createdAt  DateTime  @default(now())
   resolvedAt DateTime?
 }
@@ -305,7 +305,7 @@ model Message {
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   senderId      String
   sender        User        @relation(fields: [senderId], references: [id])
-  body          String
+  body          String      @db.Text
   createdAt     DateTime    @default(now())
 }
 

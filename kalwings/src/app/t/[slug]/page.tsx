@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { asList } from "@/lib/lists";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { BadgeCheck, GitBranch } from "lucide-react";
@@ -36,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             {p.skills.length ? <ul className="mt-3 flex flex-wrap gap-2">{p.skills.map((s) => <li key={s.id}><Badge tone="teal" title={s.explanation}><BadgeCheck className="h-3.5 w-3.5" />{s.skill}</Badge></li>)}</ul> : <p className="mt-2 text-sm text-ink-soft">No verified skills yet. Badges appear only when backed by evidence.</p>}
             {p.skills.length > 0 && <details className="mt-3 text-sm text-ink-soft"><summary className="cursor-pointer font-semibold">How these were verified</summary><ul className="mt-2 space-y-1">{p.skills.map((s) => <li key={s.id}><b>{s.skill}:</b> {s.explanation}</li>)}</ul></details>}
           </section>
-          {p.skillsClaimed.length > 0 && <section><h2 className="text-xl">Self-declared skills</h2><ul className="mt-3 flex flex-wrap gap-2">{p.skillsClaimed.map((s) => <li key={s}><Badge>{s}</Badge></li>)}</ul><p className="mt-2 text-xs text-ink-soft">Not independently verified.</p></section>}
+          {asList(p.skillsClaimed).length > 0 && <section><h2 className="text-xl">Self-declared skills</h2><ul className="mt-3 flex flex-wrap gap-2">{asList(p.skillsClaimed).map((s) => <li key={s}><Badge>{s}</Badge></li>)}</ul><p className="mt-2 text-xs text-ink-soft">Not independently verified.</p></section>}
           {p.projects.length > 0 && <section><h2 className="text-xl">Projects</h2><ul className="mt-3 space-y-4">{p.projects.map((x) => <li key={x.id} className="rounded-xl border border-line p-4"><p className="flex items-center gap-2 font-semibold"><GitBranch className="h-4 w-4" aria-hidden />{x.title}</p><p className="mt-1 text-sm text-ink-soft">{x.summary}</p><p className="mt-2 flex gap-4 text-sm">{x.githubUrl && <a className="font-semibold underline" rel="noopener noreferrer" target="_blank" href={x.githubUrl}>Code</a>}{x.demoUrl && <a className="font-semibold underline" rel="noopener noreferrer" target="_blank" href={x.demoUrl}>Demo</a>}</p></li>)}</ul></section>}
           {p.endorsements.length > 0 && <section><h2 className="text-xl">Mentor endorsements</h2><ul className="mt-3 space-y-3">{p.endorsements.map((e) => <li key={e.id}><blockquote className="rounded-xl border-l-2 border-saffron bg-saffron-50 p-4 text-navy dark:bg-saffron/10 dark:text-ink">“{e.text}”<footer className="mt-1 text-xs text-saffron-700 dark:text-saffron">— {e.mentor.user.name}, {e.mentor.roleTitle} · <a className="underline" href={e.evidence} rel="noopener noreferrer" target="_blank">evidence</a></footer></blockquote></li>)}</ul></section>}
           <p className="border-t border-line pt-4 text-xs text-ink-soft">Contact details are private. Kalwings doesn&apos;t guarantee jobs or interviews.</p>

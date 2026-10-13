@@ -1,27 +1,31 @@
-# Option B (VPS): app + Postgres on one box.  docker compose up -d --build
-# Put secrets in a .env file next to this one (POSTGRES_PASSWORD, AUTH_SECRET, NEXT_PUBLIC_SITE_URL).
+# Option B (VPS): app + MariaDB on one box.  docker compose up -d --build
+# Put secrets in a .env file next to this one (DB_PASSWORD, AUTH_SECRET, NEXT_PUBLIC_SITE_URL, EMAIL_*, ADMIN_EMAILS).
 services:
   db:
-    image: postgres:16
+    image: mariadb:10.11
     restart: unless-stopped
     environment:
-      POSTGRES_USER: kalwings
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: kalwings
-    volumes: [pgdata:/var/lib/postgresql/data]
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      MARIADB_DATABASE: kalwings
+      MARIADB_USER: kalwings
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes: [dbdata:/var/lib/mysql]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kalwings"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
-      retries: 10
+      retries: 20
   app:
     build: .
     restart: unless-stopped
     depends_on:
       db: { condition: service_healthy }
     environment:
-      DATABASE_URL: postgresql://kalwings:${POSTGRES_PASSWORD}@db:5432/kalwings
+      DATABASE_URL: mysql://kalwings:${DB_PASSWORD}@db:3306/kalwings
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
     ports: ["3000:3000"]
 volumes:
-  pgdata:
+  dbdata:

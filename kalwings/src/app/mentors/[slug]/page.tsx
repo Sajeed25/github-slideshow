@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { asList } from "@/lib/lists";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -31,7 +32,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         <div>
           <h1 className="text-4xl font-extrabold md:text-5xl">{m.user.name}</h1>
           <p className="mt-2 text-lg text-ink-soft">{m.roleTitle} · {m.company} · {m.country}</p>
-          <ul className="mt-4 flex flex-wrap items-center gap-2">{m.tags.map((t) => <li key={t}><Badge tone="teal">{t}</Badge></li>)}{m.isSample && <li><SampleTag /></li>}</ul>
+          <ul className="mt-4 flex flex-wrap items-center gap-2">{asList(m.tags).map((t) => <li key={t}><Badge tone="teal">{t}</Badge></li>)}{m.isSample && <li><SampleTag /></li>}</ul>
           {m.bio && <p className="mt-6 text-ink-soft">{m.bio}</p>}
           <h2 className="mt-8 text-xl">Upcoming office hours</h2>
           {m.slots.length ? <ul className="mt-2 text-sm text-ink-soft">{m.slots.map((s) => <li key={s.id}>{fmtTime(s.startsAt)} IST</li>)}</ul> : <p className="mt-2 text-sm text-ink-soft">No slots published yet — you can still send a request.</p>}
