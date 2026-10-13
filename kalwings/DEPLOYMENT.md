@@ -30,19 +30,24 @@ The code currently lives in the `kalwings/` **subfolder** of `Sajeed25/github-sl
 
 ```bash
 git clone https://github.com/Sajeed25/github-slideshow.git
-cd github-slideshow && git checkout ccr-9601c933-py5gtg
-cd kalwings && ./scripts/export-standalone-repo.sh ../../kalwings-site
+cd github-slideshow
+git checkout ccr-9601c933-py5gtg      # (or master, once PR #2 is merged)
+git pull
+cd kalwings
+node scripts/export-standalone-repo.mjs ../../kalwings-site     # Windows: node scripts\export-standalone-repo.mjs ..\..\kalwings-site
 ```
+
+This works on Windows, macOS and Linux (needs Node 20+ and Git 2.28+). It creates `kalwings-site` next to your clone. On macOS/Linux you can use `./scripts/export-standalone-repo.sh` instead; **on Windows don't** — Command Prompt can't run `.sh` files.
 
 Create an **empty** repo on GitHub named `kalwings` (no README/license), then:
 
 ```bash
-cd ../../kalwings-site
+cd ../../kalwings-site                # Windows: cd ..\..\kalwings-site
 git remote add origin https://github.com/Sajeed25/kalwings.git
 git push -u origin main
 ```
 
-The script fixes the CI/CD paths for the new layout. (If you'd rather keep the subfolder, set the *root directory* to `kalwings` in Hostinger, if your plan offers it, and merge to `master` here.)
+Run these inside the **new** `kalwings-site` folder, not inside `github-slideshow` (that clone already has an `origin`, so `git remote add` would fail there). The script fixes the CI/CD paths for the new layout. On the first push GitHub may open a browser window to sign you in. (If you'd rather keep the subfolder, set the *root directory* to `kalwings` in Hostinger, if your plan offers it, and merge to `master` here.)
 
 **Protect the main branch** (GitHub → Settings → Branches): require a pull request and the **CI / verify** check before merging. That makes "merged" mean "builds, lints, typechecks, migrates and boots".
 
