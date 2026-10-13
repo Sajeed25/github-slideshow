@@ -33,6 +33,7 @@ export type Mentor = {
   tags: string[];
   guided: number;
   available: boolean;
+  isSample?: boolean;
 };
 
 export const mentors: Mentor[] = [
@@ -65,6 +66,7 @@ export type Opportunity = {
   skills: string[];
   /** Approx. monthly pay in INR for range filtering (0 = unpaid / prize-only). */
   monthly: number;
+  isSample?: boolean;
 };
 
 export const opportunities: Opportunity[] = [

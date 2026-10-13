@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => setSignedIn(document.cookie.includes("kw_in=1")), []);
 
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 8);
@@ -39,8 +41,9 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
-          <Button asChild variant="ghost"><Link href="/login">Log in</Link></Button>
-          <Button asChild><Link href="/join">Join Kalwings</Link></Button>
+          {signedIn ? <Button asChild><Link href="/dashboard">Dashboard</Link></Button> : <>
+            <Button asChild variant="ghost"><Link href="/login">Log in</Link></Button>
+            <Button asChild><Link href="/join">Join Kalwings</Link></Button></>}
         </div>
 
         <div className="flex items-center gap-1 lg:hidden">
@@ -59,8 +62,9 @@ export function Navbar() {
             ))}
           </nav>
           <div className="mt-8 flex flex-col gap-3">
-            <Button asChild size="lg"><Link href="/join" onClick={() => setOpen(false)}>Join Kalwings</Link></Button>
-            <Button asChild size="lg" variant="secondary"><Link href="/login" onClick={() => setOpen(false)}>Log in</Link></Button>
+            {signedIn ? <Button asChild size="lg"><Link href="/dashboard" onClick={() => setOpen(false)}>Dashboard</Link></Button> : <>
+              <Button asChild size="lg"><Link href="/join" onClick={() => setOpen(false)}>Join Kalwings</Link></Button>
+              <Button asChild size="lg" variant="secondary"><Link href="/login" onClick={() => setOpen(false)}>Log in</Link></Button></>}
           </div>
         </div>
       )}

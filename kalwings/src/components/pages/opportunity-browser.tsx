@@ -1,11 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { OpportunityCard } from "@/components/home/opportunities";
-import { opportunities } from "@/data/sample";
+import type { Opportunity } from "@/data/sample";
 
 const sel = "h-11 w-full rounded-xl border border-line bg-surface px-3 text-[15px]";
 
-export function OpportunityBrowser({ initialQ = "", initialLocation = "" }: { initialQ?: string; initialLocation?: string }) {
+export function OpportunityBrowser({ items: opportunities, initialQ = "", initialLocation = "" }: { items: Opportunity[]; initialQ?: string; initialLocation?: string }) {
   const [q, setQ] = useState(initialQ);
   const [loc, setLoc] = useState(initialLocation);
   const [type, setType] = useState("");
@@ -22,7 +22,7 @@ export function OpportunityBrowser({ initialQ = "", initialLocation = "" }: { in
       && (!pay || (pay === "unpaid") === o.unpaid)
       && (!year || o.eligibility.includes(year) || o.eligibility.includes("Any"))
       && o.monthly >= min;
-  }), [q, loc, type, mode, pay, year, min]);
+  }), [opportunities, q, loc, type, mode, pay, year, min]);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
@@ -38,7 +38,7 @@ export function OpportunityBrowser({ initialQ = "", initialLocation = "" }: { in
         </label>
       </form>
       <div>
-        <p className="mb-4 text-sm text-ink-soft" aria-live="polite">{list.length} sample {list.length === 1 ? "opportunity" : "opportunities"}</p>
+        <p className="mb-4 text-sm text-ink-soft" aria-live="polite">{list.length} {list.length === 1 ? "opportunity" : "opportunities"}</p>
         {list.length ? <ul className="grid gap-6 sm:grid-cols-2">{list.map((o) => <li key={o.id}><OpportunityCard o={o} /></li>)}</ul>
           : <p className="card p-10 text-center text-ink-soft">Nothing matches those filters yet. Try widening them.</p>}
       </div>

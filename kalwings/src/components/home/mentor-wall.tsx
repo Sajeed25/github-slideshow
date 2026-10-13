@@ -16,10 +16,10 @@ export function MentorCard({ m }: { m: Mentor }) {
         </div>
         <p className="text-[15px] text-ink-soft">{m.role} · {m.company}</p>
         <ul className="mt-3 flex flex-wrap gap-1.5">{m.tags.map((t) => <li key={t}><Badge>{t}</Badge></li>)}</ul>
-        <p className="mt-4 text-sm text-ink-soft"><span className="font-semibold text-ink">{m.guided === 0 ? "[X]" : m.guided}</span> students guided</p>
+        <p className="mt-4 text-sm text-ink-soft"><span className="font-semibold text-ink">{m.isSample === undefined && m.guided === 0 ? "[X]" : m.guided}</span> students guided</p>
         <div className="mt-auto flex items-center gap-2 pt-5">
           <Button asChild size="sm" className="flex-1"><Link href={`/mentors/${m.slug}`}>{m.available ? "Book a session" : "View profile"}</Link></Button>
-          <SampleTag />
+          {m.isSample !== false && <SampleTag />}
         </div>
       </div>
     </article>

@@ -9,17 +9,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role { STUDENT MENTOR EMPLOYER COLLEGE_ADMIN PLATFORM_ADMIN }
-enum VerificationStatus { PENDING VERIFIED REJECTED }
-enum OpportunityType { INTERNSHIP JOB CHALLENGE }
-enum WorkMode { REMOTE HYBRID ONSITE }
-enum ApplicationStage { APPLIED SHORTLISTED INTERVIEW OFFER REJECTED WITHDRAWN }
-enum SessionStatus { REQUESTED ACCEPTED DECLINED COMPLETED CANCELLED }
+enum Role {
+  STUDENT
+  MENTOR
+  EMPLOYER
+  COLLEGE_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OpportunityType {
+  INTERNSHIP
+  JOB
+  CHALLENGE
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum ApplicationStage {
+  APPLIED
+  SHORTLISTED
+  INTERVIEW
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+enum SessionStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  COMPLETED
+  CANCELLED
+}
 
 model User {
   id        String   @id @default(cuid())
   email     String?  @unique
   phone     String?  @unique
+  googleId  String?  @unique
   name      String
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
@@ -30,26 +67,35 @@ model User {
   college       CollegeAdmin?
   notifications Notification[]
   auditLogs     AuditLog[]
+  messages      Message[]
+  reports       Report[]
 }
 
 model StudentProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slug           String   @unique // public Talent Card URL
+  isSample       Boolean            @default(false) // seeded placeholder; UI shows a "Sample" tag
+  id             String             @id @default(cuid())
+  userId         String             @unique
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug           String             @unique // public Talent Card URL
   headline       String?
+  bio            String?
+  city           String?
+  githubUrl      String?
+  skillsClaimed  String[]
+  lookingFor     String?
   graduationYear Int?
   collegeId      String?
-  college        College? @relation(fields: [collegeId], references: [id])
+  college        College?           @relation(fields: [collegeId], references: [id])
   // Contact details live on User and are NEVER returned by public queries.
-  contactVisible Boolean  @default(false)
-  completeness   Int      @default(0) // 0–100 profile completeness score
+  contactVisible Boolean            @default(false)
+  completeness   Int                @default(0) // 0–100 profile completeness score
   projects       Project[]
   skills         SkillEvidence[]
   applications   Application[]
   savedRoles     SavedOpportunity[]
   sessions       MentorSession[]
   endorsements   Endorsement[]
+  shortlistedBy  Shortlist[]
 }
 
 model Project {
@@ -75,6 +121,7 @@ model SkillEvidence {
 }
 
 model MentorProfile {
+  isSample          Boolean            @default(false) // seeded placeholder; UI shows a "Sample" tag
   id                String             @id @default(cuid())
   userId            String             @unique
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -86,6 +133,7 @@ model MentorProfile {
   tags              String[]
   bio               String?
   status            VerificationStatus @default(PENDING)
+  verifiedAt        DateTime?
   slots             OfficeHourSlot[]
   sessions          MentorSession[]
   endorsementsGiven Endorsement[]
@@ -106,6 +154,8 @@ model MentorSession {
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id])
   topic     String
+  message   String?
+  createdAt DateTime       @default(now())
   status    SessionStatus  @default(REQUESTED)
   startsAt  DateTime?
 }
@@ -122,10 +172,14 @@ model Endorsement {
 }
 
 model Company {
+  isSample      Boolean            @default(false) // seeded placeholder; UI shows a "Sample" tag
   id            String             @id @default(cuid())
   name          String
   website       String?
   status        VerificationStatus @default(PENDING) // no posting/search access until VERIFIED
+  verifiedAt    DateTime?
+  about         String?
+  shortlists    Shortlist[]
   members       EmployerMember[]
   opportunities Opportunity[]
 }
@@ -149,6 +203,7 @@ model Opportunity {
   payMinINR    Int? // monthly (internship) or annual (job); null only when unpaid
   payMaxINR    Int?
   payText      String // human-readable, always displayed
+  monthlyINR   Int                @default(0)
   unpaid       Boolean            @default(false)
   workMode     WorkMode
   location     String
@@ -171,6 +226,7 @@ model Application {
   student       StudentProfile   @relation(fields: [studentId], references: [id])
   stage         ApplicationStage @default(APPLIED)
   employerNotes String?
+  messages      Message[]
   createdAt     DateTime         @default(now())
 
   @@unique([opportunityId, studentId])
@@ -212,6 +268,8 @@ model Notification {
 }
 
 model Report {
+  reporterId String?
+  reporter   User?     @relation(fields: [reporterId], references: [id])
   id         String    @id @default(cuid())
   targetType String
   targetId   String
@@ -227,4 +285,38 @@ model AuditLog {
   action    String
   target    String
   createdAt DateTime @default(now())
+}
+
+// One-time passcodes (hashed). Rate-limited per identifier.
+model OtpCode {
+  id         String   @id @default(cuid())
+  identifier String // normalised email or phone
+  codeHash   String
+  attempts   Int      @default(0)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+}
+
+model Message {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  senderId      String
+  sender        User        @relation(fields: [senderId], references: [id])
+  body          String
+  createdAt     DateTime    @default(now())
+}
+
+model Shortlist {
+  id        String         @id @default(cuid())
+  companyId String
+  company   Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  note      String?
+  createdAt DateTime       @default(now())
+
+  @@unique([companyId, studentId])
 }

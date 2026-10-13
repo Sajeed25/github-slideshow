@@ -8,20 +8,46 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS · Framer Motion · Radix 
 
 | Phase | Status |
 | --- | --- |
-| 1. Design system + full homepage (all 17 sections) | Built |
-| 2. Public pages: Students, Employers (pricing), Colleges, Mentors (directory + profiles), Opportunities (filters + detail), Challenges, Community, About, Press, Contact, Help, Privacy, Terms, Trust | Built (legal/about copy is draft) |
-| 3. MVP platform flows (auth, dashboards, hiring pipeline, admin) | **Not built.** The data model is in `prisma/schema.prisma`; `/join` and `/login` are non-functional shells |
-| Seed data | In `src/data/sample.ts` (all marked *Sample*). A DB seed script comes with phase 3 |
+| 1. Design system + full homepage (17 sections) | Built |
+| 2. Public pages (Students, Employers + pricing, Colleges, Mentors, Opportunities, Challenges, Community, About, Press, Contact, Help, legal) | Built (legal/about copy is draft) |
+| 3. MVP platform flows | **Built and tested end-to-end in dev** — see below for what is *not* done |
+
+### Platform: what works
+
+- **Auth:** email/mobile one-time codes (hashed, 10-min expiry, 5 attempts, rate-limited), signed httpOnly session cookie, roles `STUDENT / MENTOR / EMPLOYER / COLLEGE_ADMIN / PLATFORM_ADMIN`. Every server action calls `requireActionRole(...)`; every dashboard page calls `requirePageRole(...)`.
+- **Student:** onboarding wizard, profile completeness score (visible checklist), portfolio (projects), public Talent Card at `/t/[slug]` with QR code (noindex, never shows email/phone), one-click apply, application tracker + withdraw, saved roles, mentor session requests, notifications, opt-in contact sharing.
+- **Mentor:** profile (admin-verified before listing), office-hour slots, accept/decline/complete requests, endorsements (only for students with a *completed* session, and must link evidence — each becomes verified evidence on the Talent Card with an explanation on hover).
+- **Employer:** company registration → admin verification gate (no posting/search before it), post roles/challenges (pay, work mode, location, eligibility mandatory; paid roles must state an amount; unpaid labelled), listings go live only after moderation, talent search (verified vs self-declared skills shown separately), shortlist, pipeline Applied → Shortlisted → Interview → Offer, private notes, per-application messaging.
+- **Admin:** company and mentor verification queues, listing moderation, fraud/abuse reports, analytics counts, audit log.
+- Public `/opportunities` and `/mentors` read from the database (verified + moderated only). The homepage still uses `src/data/sample.ts` as a showcase.
+
+### Platform: what is NOT done
+
+- **No email/SMS delivery.** In dev the OTP is printed to the server console and shown on screen; in production it is never shown and **nothing is sent**, so nobody can log in until you wire a provider in `src/lib/otp.ts` (`TODO(email/SMS)`). Notifications are in-app only.
+- **Google sign-in is implemented but untested** (needs real `GOOGLE_CLIENT_ID/SECRET` and the callback URL `/api/auth/google/callback`).
+- **File uploads are not built.** Projects take links only; certificates/screenshots need signed-URL storage with type/size limits.
+- **College admin** can sign up but has an empty dashboard.
+- **Rate limiting is in-memory** (`src/lib/rate-limit.ts`): fine for one instance; use Redis/Upstash for several. OTP issuance is also limited per identifier in the database.
+- No analytics/error-monitoring SDK (Sentry etc.), no PWA service worker, no OG images, Contact form still `mailto:`.
+- Mentor "book a session" is a request/accept flow; slots are informational and not auto-bound to bookings. No calendar invites.
+- Security notes: Next.js server actions enforce same-origin; the Google routes use a state cookie. Add a CSP and review before launch.
 
 ## Setup
 
 ```bash
 cd kalwings
-npm install
-cp .env.example .env.local
-npm run dev          # http://localhost:3000
-npm run build && npm start
+npm install                      # also runs `prisma generate`
+cp .env.example .env             # set DATABASE_URL and AUTH_SECRET (32+ chars)
+npx prisma migrate dev           # creates tables (Postgres 14+)
+npm run db:seed                  # SAMPLE mentors, companies, listings, admin + student
+npm run dev                      # http://localhost:3000
 ```
+
+Sample logins (dev only; OTP appears on screen): `admin@sample.kalwings.test`, `student@sample.kalwings.test`, `sample-mentor-1@sample.kalwings.test`, `sample-co-a@sample.kalwings.test`. These addresses can't receive mail, so they are inert in production, but run `npm run db:unseed` before launch anyway.
+
+Create a real admin: sign in once, then `npm run make-admin -- you@example.com`.
+
+Tests: with the dev server running and the seed loaded, `npm run test:e2e` drives student/mentor/employer/admin through the real UI (25 checks incl. permission and trust-rule checks). Set `E2E_BASE_URL` and `CHROMIUM_PATH` if needed.
 
 Node 20+.
 
@@ -54,12 +80,9 @@ Sample detail pages (`/mentors/[slug]`, `/opportunities/[id]`) are `noindex` and
 
 Pay, work mode, location and eligibility always shown · unpaid roles labelled · student contact private by default · no "guaranteed job" language · sponsored never styled as verified · no invented stats, awards, testimonials or logos.
 
-## Platform roadmap (phase 3)
+## Next steps
 
-1. `npm i prisma @prisma/client`, set `DATABASE_URL`, `npx prisma migrate dev`, write a seed script from `src/data/sample.ts`.
-2. Auth: Auth.js (Google + email/phone OTP); roles from the `Role` enum; middleware plus a role check inside **every** server action.
-3. Student onboarding wizard, Talent Card (`/t/[slug]` + QR), application tracker.
-4. Mentor and employer dashboards; employer verification gate; pipeline.
-5. Admin queues + audit log.
-6. Cross-cutting: Zod validation, rate limiting, CSRF (server actions + origin check), secure uploads (signed URLs, type/size limits), email, analytics, Sentry, PWA service worker (manifest already present).
-7. Wire the Contact form; add OG images and `next/image` once real photos exist; run Lighthouse on real content.
+1. Email/SMS provider for OTP and notifications; verify Google sign-in.
+2. Secure uploads, Sentry + analytics, CSP, PWA service worker, OG images.
+3. College dashboard; mentor slot booking; Redis rate limiting.
+4. Real legal copy, real content, `next/image` once photos exist; Lighthouse on real content.

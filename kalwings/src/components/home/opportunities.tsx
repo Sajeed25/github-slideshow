@@ -24,7 +24,7 @@ export function OpportunityCard({ o }: { o: Opportunity }) {
       </ul>
       <div className="mt-auto flex items-center justify-between pt-5">
         <Link href={`/opportunities/${o.id}`} className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal">View details →</Link>
-        <SampleTag />
+        {o.isSample !== false && <SampleTag />}
       </div>
     </article>
   );
